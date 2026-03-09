@@ -97,7 +97,7 @@ body::after{content:'';position:fixed;inset:0;z-index:9999;pointer-events:none;
 .profile-header{display:flex;align-items:flex-start;gap:20px;margin-bottom:12px;}
 .profile-photo-wrap{position:relative;flex-shrink:0;}
 .profile-photo-wrap::before{content:'';position:absolute;inset:-12px;border-radius:50%;background:radial-gradient(circle,rgba(255,153,0,0.12) 0%,transparent 70%);z-index:0;}
-.profile-photo{width:120px;height:120px;border-radius:50%;border:2px solid var(--amber);object-fit:cover;box-shadow:0 0 24px rgba(255,153,0,0.2);display:block;position:relative;z-index:1;}
+.profile-photo{width:200px;height:200px;border-radius:50%;border:2px solid var(--amber);object-fit:cover;box-shadow:0 0 24px rgba(255,153,0,0.2);display:block;position:relative;z-index:1;}
 .profile-info{flex:1;padding-top:4px;}
 .bio-line{margin:4px 0;font-size:13px;}
 .bio-line .prompt{color:var(--amber);margin-right:6px;}
@@ -188,7 +188,7 @@ body::after{content:'';position:fixed;inset:0;z-index:9999;pointer-events:none;
   .two-col{grid-template-columns:1fr;}
   .three-col{grid-template-columns:1fr;}
   .quick-stats{grid-template-columns:1fr 1fr;}
-  .profile-photo{width:90px;height:90px;}
+  .profile-photo{width:140px;height:140px;}
   .profile-header{flex-direction:column;align-items:center;text-align:center;}
 }
 </style>
@@ -247,8 +247,9 @@ body::after{content:'';position:fixed;inset:0;z-index:9999;pointer-events:none;
             <div class="profile-info">
               <div class="h1">> UMER CHEEMA</div>
               <div style="margin:6px 0 4px;font-size:12px;color:var(--text-dim);">First-year CS · University of Waterloo · Co-op Program</div>
-              <div style="font-size:11px;color:var(--text-dim);margin-bottom:12px;">Seeking Winter / Summer 2026</div>
-              <div class="bio-line"><span class="prompt">></span> CS kid who thinks markets are data problems.</div>
+              <div style="font-size:11px;color:var(--text-dim);margin-bottom:12px;">Seeking Summer 2026</div>
+              <div class="bio-line"><span class="prompt">></span> cs + finance at waterloo. probably sleeping.</div>
+              <div class="bio-line"><span class="prompt">></span> i like building things at the intersection of code and markets.</div>
             </div>
           </div>
           <hr class="sep">
@@ -271,7 +272,7 @@ body::after{content:'';position:fixed;inset:0;z-index:9999;pointer-events:none;
             </div>
             <div class="contact-row" style="border:none;padding:3px 0;">
               <span class="label" style="width:80px;">LINKEDIN</span>
-              <a href="https://linkedin.com/in/umer-cheema-428701310" target="_blank" style="color:var(--amber);text-decoration:none;font-size:12px;">linkedin.com/in/umer-cheema</a>
+              <a href="https://www.linkedin.com/in/umer-cheema-428701310/" target="_blank" style="color:var(--amber);text-decoration:none;font-size:12px;">linkedin.com/in/umer-cheema</a>
             </div>
           </div>
         </div>
@@ -283,7 +284,7 @@ body::after{content:'';position:fixed;inset:0;z-index:9999;pointer-events:none;
             <div class="quick-stats">
               <div class="qs-cell">
                 <div class="qs-val">2</div>
-                <div class="qs-label">CO-OPS</div>
+                <div class="qs-label">INTERNSHIPS</div>
               </div>
               <div class="qs-cell">
                 <div class="qs-val">3</div>
@@ -294,16 +295,16 @@ body::after{content:'';position:fixed;inset:0;z-index:9999;pointer-events:none;
                 <div class="qs-label">TERM</div>
               </div>
               <div class="qs-cell">
-                <div class="qs-val">23%</div>
-                <div class="qs-label">YTD RETURN</div>
+                <div class="qs-val" style="color:var(--green);">+4%</div>
+                <div class="qs-label">ALPHA VS SPY</div>
               </div>
               <div class="qs-cell">
-                <div class="qs-val">68%</div>
-                <div class="qs-label">T20 ACC</div>
+                <div class="qs-val">2AM</div>
+                <div class="qs-label">COMMIT TIME</div>
               </div>
               <div class="qs-cell">
-                <div class="qs-val" style="color:var(--green);">WIP</div>
-                <div class="qs-label">DEBATELY</div>
+                <div class="qs-val" style="font-size:16px;">SWE · FIN</div>
+                <div class="qs-label">FOCUS</div>
               </div>
             </div>
           </div>
@@ -455,8 +456,8 @@ body::after{content:'';position:fixed;inset:0;z-index:9999;pointer-events:none;
         </div>
         <div class="contact-row">
           <span class="contact-label">LINKEDIN</span>
-          <span class="contact-val"><a href="https://linkedin.com/in/umer-cheema-428701310" target="_blank">linkedin.com/in/umer-cheema-428701310</a></span>
-          <span class="contact-action"><button class="open-btn" onclick="window.open('https://linkedin.com/in/umer-cheema-428701310','_blank')">[ OPEN ↗ ]</button></span>
+          <span class="contact-val"><a href="https://www.linkedin.com/in/umer-cheema-428701310/" target="_blank">linkedin.com/in/umer-cheema-428701310</a></span>
+          <span class="contact-action"><button class="open-btn" onclick="window.open('https://www.linkedin.com/in/umer-cheema-428701310/','_blank')">[ OPEN ↗ ]</button></span>
         </div>
         <div class="contact-row">
           <span class="contact-label">GITHUB</span>
