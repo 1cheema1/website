@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>UMER CHEEMA TERMINAL</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#0a0a0a;--bg2:#0e0e0e;--bg3:#141414;
+  --amber:#ff9900;--amber-dim:rgba(255,153,0,0.3);--amber-faint:rgba(255,153,0,0.08);
+  --green:#00cc66;--green-dim:rgba(0,204,102,0.3);
+  --red:#ff4444;--red-dim:rgba(255,68,68,0.3);
+  --text:#cccccc;--text-dim:#666666;
+  --border:rgba(255,153,0,0.15);
+  --font:'JetBrains Mono',monospace;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;line-height:1.6;overflow-x:hidden;}
+
+/* Scanlines */
+body::after{content:'';position:fixed;inset:0;z-index:9999;pointer-events:none;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:6px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:var(--amber-dim);border-radius:0;}
+
+/* ── BOOT SEQUENCE ── */
+#boot-screen{position:fixed;inset:0;z-index:10000;background:var(--bg);display:flex;flex-direction:column;justify-content:center;padding:10% 15%;transition:opacity 0.4s ease;}
+#boot-screen.hidden{opacity:0;pointer-events:none;}
+#boot-log{font-size:11px;color:var(--green);line-height:1.8;}
+#boot-log .line{opacity:0;transform:translateY(4px);transition:all 0.15s ease;}
+#boot-log .line.show{opacity:1;transform:translateY(0);}
+
+/* ── LAYOUT ── */
+#app{display:none;flex-direction:column;min-height:100vh;}
+#app.booted{display:flex;}
+
+/* ── HEADER ── */
+#header{display:flex;align-items:center;justify-content:space-between;padding:8px 16px;border-bottom:1px solid var(--border);background:var(--bg);position:sticky;top:0;z-index:100;min-height:36px;flex-shrink:0;}
+#header .brand{font-size:10px;letter-spacing:2px;color:var(--amber);text-transform:uppercase;white-space:nowrap;font-weight:600;}
+#ticker-wrap{flex:1;overflow:hidden;margin:0 24px;position:relative;height:16px;}
+#ticker-wrap::before,#ticker-wrap::after{content:'';position:absolute;top:0;bottom:0;width:40px;z-index:2;}
+#ticker-wrap::before{left:0;background:linear-gradient(90deg,var(--bg),transparent);}
+#ticker-wrap::after{right:0;background:linear-gradient(270deg,var(--bg),transparent);}
+#ticker{display:flex;gap:32px;animation:tickerScroll 30s linear infinite;white-space:nowrap;font-size:11px;position:absolute;top:0;}
+@keyframes tickerScroll{0%{transform:translateX(0);}100%{transform:translateX(-50%);}}
+.tick-item{display:inline-flex;gap:6px;align-items:center;}
+.tick-sym{color:var(--amber);font-weight:600;}
+.tick-price{color:var(--text);}
+.tick-up{color:var(--green);}
+.tick-down{color:var(--red);}
+.tick-special{color:var(--amber);font-weight:600;letter-spacing:1px;}
+#clock{font-size:11px;color:var(--amber);white-space:nowrap;font-variant-numeric:tabular-nums;}
+
+/* ── NAV ── */
+#nav{display:flex;border-bottom:1px solid var(--border);background:var(--bg2);flex-shrink:0;}
+.nav-btn{flex:1;padding:8px 12px;text-align:center;font-family:var(--font);font-size:11px;letter-spacing:1px;color:var(--text-dim);background:transparent;border:none;border-right:1px solid var(--border);cursor:pointer;transition:all 0.15s ease;text-transform:uppercase;}
+.nav-btn:last-child{border-right:none;}
+.nav-btn:hover{color:var(--text);background:var(--amber-faint);}
+.nav-btn.active{color:var(--bg);background:var(--amber);font-weight:600;}
+.nav-btn .key{font-weight:700;margin-right:4px;font-size:10px;}
+
+/* ── MAIN ── */
+#main{flex:1;padding:16px;overflow-y:auto;}
+.panel{display:none;}
+.panel.active{display:block;animation:panelIn 0.3s ease;}
+@keyframes panelIn{0%{opacity:0;transform:translateY(6px);}100%{opacity:1;transform:translateY(0);}}
+
+/* ── PANELS GRID ── */
+.panel-grid{display:grid;grid-template-columns:1.2fr 1fr;gap:16px;}
+.panel-box{border:1px solid var(--border);padding:16px;background:var(--bg2);position:relative;}
+.panel-box .box-title{font-size:10px;letter-spacing:2px;color:var(--amber);text-transform:uppercase;margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid var(--border);font-weight:600;}
+.panel-box.full{grid-column:1/-1;}
+
+/* ── TEXT STYLES ── */
+.h1{font-size:22px;font-weight:700;color:var(--amber);letter-spacing:2px;}
+.h2{font-size:14px;font-weight:600;color:var(--amber);letter-spacing:1px;margin:16px 0 8px;}
+.h3{font-size:12px;font-weight:600;color:var(--amber);letter-spacing:1px;margin:12px 0 6px;}
+.dim{color:var(--text-dim);}
+.amber{color:var(--amber);}
+.green{color:var(--green);}
+.red{color:var(--red);}
+.tag{display:inline-block;border:1px solid var(--amber-dim);color:var(--amber);font-size:10px;padding:1px 6px;margin:2px 2px;letter-spacing:0.5px;}
+.tag.green-tag{border-color:var(--green-dim);color:var(--green);}
+.sep{border:none;border-top:1px solid var(--border);margin:12px 0;}
+.label{font-size:10px;letter-spacing:2px;color:var(--text-dim);text-transform:uppercase;}
+.blink{animation:blink 1s step-end infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:0;}}
+.status-badge{display:inline-block;border:1px solid var(--green);color:var(--green);font-size:10px;padding:2px 8px;letter-spacing:1px;animation:statusPulse 2s ease-in-out infinite;}
+@keyframes statusPulse{0%,100%{border-color:var(--green);box-shadow:0 0 0 rgba(0,204,102,0);}50%{border-color:var(--green);box-shadow:0 0 8px rgba(0,204,102,0.15);}}
+
+/* ── OVERVIEW ── */
+.profile-photo{width:120px;height:120px;border-radius:50%;border:2px solid var(--amber);object-fit:cover;box-shadow:0 0 20px rgba(255,153,0,0.15);display:block;margin:0 auto 16px;}
+.bio-line{margin:4px 0;font-size:13px;}
+.bio-line .prompt{color:var(--amber);margin-right:6px;}
+.stat-row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.03);}
+.stat-row:last-child{border:none;}
+.stat-label{color:var(--text-dim);font-size:11px;letter-spacing:1px;}
+.stat-val{font-weight:600;font-size:12px;}
+.stat-val.up{color:var(--green);}
+.stat-val.down{color:var(--red);}
+
+/* Quick Stats Grid */
+.quick-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:12px;}
+.qs-cell{border:1px solid var(--border);padding:12px 10px;text-align:center;background:var(--bg);}
+.qs-val{font-size:18px;font-weight:700;color:var(--amber);margin-bottom:4px;}
+.qs-label{font-size:9px;letter-spacing:1.5px;color:var(--text-dim);text-transform:uppercase;}
+
+/* Tech Stack Pills */
+.tech-pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+.tech-pill{border:1px solid var(--amber-dim);color:var(--amber);font-size:10px;padding:3px 10px;letter-spacing:0.5px;transition:all 0.15s;}
+.tech-pill:hover{background:var(--amber);color:var(--bg);}
+.tech-pill.green-pill{border-color:var(--green-dim);color:var(--green);}
+.tech-pill.green-pill:hover{background:var(--green);color:var(--bg);}
+
+/* ── RESEARCH ── */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+.dashed-box{border:1px dashed var(--amber-dim);padding:14px;background:var(--bg);margin:8px 0;}
+.dashed-box .dashed-title{font-size:10px;letter-spacing:2px;color:var(--amber);text-transform:uppercase;margin-bottom:10px;font-weight:600;}
+.dashed-box p,.dashed-box li{font-size:12px;color:var(--text);line-height:1.7;margin:4px 0;}
+.dashed-box ul{padding-left:16px;}
+
+/* ── POSITIONS ── */
+.pos-table{width:100%;border-collapse:collapse;}
+.pos-table th{text-align:left;font-size:10px;letter-spacing:1px;color:var(--text-dim);padding:6px 8px;border-bottom:1px solid var(--border);text-transform:uppercase;font-weight:400;}
+.pos-table td{padding:8px;border-bottom:1px solid rgba(255,255,255,0.02);font-size:12px;vertical-align:top;}
+.pos-table tr:hover td{background:var(--amber-faint);}
+.pos-sym{color:var(--amber);font-weight:600;letter-spacing:0.5px;}
+.pos-desc{color:var(--text-dim);}
+.pos-stack{color:var(--text-dim);font-size:11px;}
+.view-btn{color:var(--amber);font-family:var(--font);font-size:11px;cursor:pointer;background:none;border:1px solid var(--amber-dim);padding:2px 8px;transition:all 0.15s;white-space:nowrap;}
+.view-btn:hover{background:var(--amber);color:var(--bg);}
+
+/* ── CONTACT ── */
+.contact-row{display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.03);}
+.contact-label{width:100px;font-size:10px;letter-spacing:2px;color:var(--text-dim);text-transform:uppercase;}
+.contact-val{color:var(--amber);flex:1;}
+.contact-val a{color:var(--amber);text-decoration:none;}
+.contact-val a:hover{text-decoration:underline;}
+.contact-action{margin-left:auto;}
+.copy-btn,.open-btn{font-family:var(--font);font-size:10px;letter-spacing:1px;padding:3px 10px;cursor:pointer;border:1px solid var(--amber-dim);color:var(--amber);background:transparent;transition:all 0.15s;text-transform:uppercase;}
+.copy-btn:hover,.open-btn:hover{background:var(--amber);color:var(--bg);}
+.copy-btn.copied{border-color:var(--green);color:var(--green);}
+#msg-area{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--font);font-size:12px;padding:12px;resize:vertical;min-height:120px;outline:none;margin-top:8px;}
+#msg-area:focus{border-color:var(--amber);}
+#send-btn{margin-top:8px;font-family:var(--font);font-size:11px;letter-spacing:1px;padding:8px 24px;background:transparent;border:1px solid var(--amber);color:var(--amber);cursor:pointer;text-transform:uppercase;transition:all 0.15s;}
+#send-btn:hover{background:var(--amber);color:var(--bg);}
+
+/* ── MODAL ── */
+#modal-overlay{position:fixed;inset:0;z-index:5000;background:rgba(0,0,0,0.85);display:none;align-items:center;justify-content:center;backdrop-filter:blur(2px);}
+#modal-overlay.open{display:flex;}
+#modal{background:var(--bg);border:1px solid var(--amber-dim);max-width:680px;width:94%;max-height:80vh;overflow-y:auto;position:relative;}
+#modal-header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--bg2);}
+#modal-header .modal-title{font-size:11px;letter-spacing:2px;color:var(--amber);text-transform:uppercase;font-weight:600;}
+#modal-close{background:none;border:1px solid var(--amber-dim);color:var(--amber);font-family:var(--font);font-size:11px;padding:2px 8px;cursor:pointer;transition:all 0.15s;}
+#modal-close:hover{background:var(--amber);color:var(--bg);}
+#modal-body{padding:16px;}
+#modal-body p{margin:8px 0;font-size:12px;line-height:1.7;}
+#modal-body .modal-stat{display:flex;justify-content:space-between;padding:4px 0;font-size:11px;}
+#modal-body a{color:var(--amber);text-decoration:none;}
+#modal-body a:hover{text-decoration:underline;}
+#modal-body ul{padding-left:16px;margin:8px 0;}
+#modal-body li{margin:4px 0;font-size:12px;color:var(--text);line-height:1.6;}
+
+/* ── FOOTER ── */
+#footer{padding:8px 16px;border-top:1px solid var(--border);font-size:9px;letter-spacing:2px;color:var(--text-dim);text-align:center;text-transform:uppercase;flex-shrink:0;}
+
+/* ── MOBILE ── */
+@media(max-width:768px){
+  .panel-grid{grid-template-columns:1fr;}
+  #ticker-wrap{display:none;}
+  #header .brand{font-size:9px;}
+  .nav-btn{font-size:9px;padding:6px 4px;}
+  .nav-btn .key{display:none;}
+  .h1{font-size:18px;}
+  #main{padding:10px;}
+  .pos-table td,.pos-table th{padding:6px 4px;font-size:10px;}
+  .two-col{grid-template-columns:1fr;}
+  .three-col{grid-template-columns:1fr;}
+  .quick-stats{grid-template-columns:1fr 1fr;}
+  .profile-photo{width:90px;height:90px;}
+}
+</style>
+</head>
+<body>
+
+<!-- ══ BOOT SCREEN ══ -->
+<div id="boot-screen">
+  <div id="boot-log">
+    <div class="line">[SYS] Initializing UMER CHEEMA TERMINAL v1.0...</div>
+    <div class="line">[MEM] Allocating display buffer.......... OK</div>
+    <div class="line">[NET] Connecting to market data feed...... OK</div>
+    <div class="line">[GPU] Rendering engine initialized........ OK</div>
+    <div class="line">[DAT] Loading portfolio positions......... OK</div>
+    <div class="line">[DAT] Loading research coverage........... OK</div>
+    <div class="line">[SEC] Authentication bypassed............. OK</div>
+    <div class="line">[SYS] All systems operational. Welcome.</div>
+    <div class="line" style="margin-top:8px;color:var(--amber);font-weight:600;">TERMINAL READY_<span class="blink">█</span></div>
+  </div>
+</div>
+
+<!-- ══ APP ══ -->
+<div id="app">
+  <!-- HEADER -->
+  <div id="header">
+    <div class="brand">UMER CHEEMA TERMINAL <span class="dim">v1.0</span></div>
+    <div id="ticker-wrap">
+      <div id="ticker"></div>
+    </div>
+    <div id="clock"></div>
+  </div>
+
+  <!-- NAV -->
+  <nav id="nav">
+    <button class="nav-btn active" data-panel="overview" onclick="switchPanel('overview')"><span class="key">F1</span>OVERVIEW</button>
+    <button class="nav-btn" data-panel="research" onclick="switchPanel('research')"><span class="key">F2</span>RESEARCH</button>
+    <button class="nav-btn" data-panel="positions" onclick="switchPanel('positions')"><span class="key">F3</span>POSITIONS</button>
+    <button class="nav-btn" data-panel="contact" onclick="switchPanel('contact')"><span class="key">F4</span>CONTACT</button>
+  </nav>
+
+  <!-- MAIN -->
+  <div id="main">
+
+    <!-- ══════════════════════════════════ -->
+    <!-- F1 OVERVIEW                        -->
+    <!-- ══════════════════════════════════ -->
+    <div class="panel active" id="p-overview">
+      <div class="panel-grid">
+        <!-- LEFT: Profile -->
+        <div class="panel-box">
+          <div class="box-title">Profile Summary</div>
+          <img src="photo.jpg" alt="Umer Cheema" class="profile-photo">
+          <div class="h1" style="text-align:center;">> UMER CHEEMA</div>
+          <div style="text-align:center;margin:6px 0 4px;font-size:12px;color:var(--text-dim);">First-year CS · University of Waterloo · Co-op Program</div>
+          <div style="text-align:center;font-size:11px;color:var(--text-dim);margin-bottom:16px;">Seeking Winter / Summer 2026</div>
+          <hr class="sep">
+          <div class="bio-line"><span class="prompt">></span> CS kid who thinks markets are data problems.</div>
+          <div class="bio-line"><span class="prompt">></span> Building at the intersection of software and quant finance.</div>
+          <div class="bio-line"><span class="prompt">></span> Two co-ops shipped. Real systems built.</div>
+          <hr class="sep">
+          <div style="margin-top:12px;">
+            <div class="contact-row" style="border:none;padding:3px 0;">
+              <span class="label" style="width:80px;">STATUS</span>
+              <span class="status-badge">ACTIVELY SEEKING</span>
+            </div>
+            <div class="contact-row" style="border:none;padding:3px 0;">
+              <span class="label" style="width:80px;">LOCATION</span>
+              <span style="color:var(--text);">Waterloo, ON</span>
+            </div>
+            <div class="contact-row" style="border:none;padding:3px 0;">
+              <span class="label" style="width:80px;">EMAIL</span>
+              <a href="mailto:uicheema@uwaterloo.ca" style="color:var(--amber);text-decoration:none;font-size:12px;">uicheema@uwaterloo.ca</a>
+            </div>
+            <div class="contact-row" style="border:none;padding:3px 0;">
+              <span class="label" style="width:80px;">GITHUB</span>
+              <a href="https://github.com/1cheema1" target="_blank" style="color:var(--amber);text-decoration:none;font-size:12px;">github.com/1cheema1</a>
+            </div>
+            <div class="contact-row" style="border:none;padding:3px 0;">
+              <span class="label" style="width:80px;">LINKEDIN</span>
+              <a href="https://linkedin.com/in/umer-cheema-428701310" target="_blank" style="color:var(--amber);text-decoration:none;font-size:12px;">linkedin.com/in/umer-cheema</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT: Quick Stats + Tech Stack -->
+        <div style="display:flex;flex-direction:column;gap:16px;">
+          <div class="panel-box" style="flex:1;">
+            <div class="box-title">Quick Stats</div>
+            <div class="quick-stats">
+              <div class="qs-cell">
+                <div class="qs-val">2</div>
+                <div class="qs-label">CO-OPS</div>
+              </div>
+              <div class="qs-cell">
+                <div class="qs-val">3</div>
+                <div class="qs-label">PROJECTS</div>
+              </div>
+              <div class="qs-cell">
+                <div class="qs-val" style="color:var(--green);">1A</div>
+                <div class="qs-label">TERM</div>
+              </div>
+              <div class="qs-cell">
+                <div class="qs-val">23%</div>
+                <div class="qs-label">YTD RETURN</div>
+              </div>
+              <div class="qs-cell">
+                <div class="qs-val">68%</div>
+                <div class="qs-label">T20 ACC</div>
+              </div>
+              <div class="qs-cell">
+                <div class="qs-val" style="color:var(--green);">WIP</div>
+                <div class="qs-label">DEBATELY</div>
+              </div>
+            </div>
+          </div>
+          <div class="panel-box">
+            <div class="box-title">Tech Stack</div>
+            <div class="tech-pills">
+              <span class="tech-pill">Python</span>
+              <span class="tech-pill">JavaScript</span>
+              <span class="tech-pill">TypeScript</span>
+              <span class="tech-pill">React</span>
+              <span class="tech-pill">Next.js</span>
+              <span class="tech-pill">Node.js</span>
+              <span class="tech-pill">SQL</span>
+              <span class="tech-pill green-pill">scikit-learn</span>
+              <span class="tech-pill green-pill">Pandas</span>
+              <span class="tech-pill">AWS</span>
+              <span class="tech-pill">Supabase</span>
+              <span class="tech-pill">Git</span>
+              <span class="tech-pill green-pill">Streamlit</span>
+              <span class="tech-pill">OpenAI API</span>
+              <span class="tech-pill">Gemini</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════ -->
+    <!-- F2 RESEARCH                        -->
+    <!-- ══════════════════════════════════ -->
+    <div class="panel" id="p-research">
+      <div class="panel-box full">
+        <div class="box-title">Research Coverage — Umer Cheema</div>
+        <div style="font-size:10px;color:var(--text-dim);margin-bottom:20px;">LAST UPDATED: <span id="research-date"></span></div>
+
+        <!-- What I'm Into -->
+        <div class="h3">WHAT I'M INTO</div>
+        <hr class="sep">
+        <div class="two-col" style="margin:12px 0 24px;">
+          <div>
+            <p style="font-size:12px;color:var(--text);line-height:1.8;margin:4px 0;"><span class="amber">></span> Quantitative Finance — systematic strategies, factor models, portfolio optimization</p>
+            <p style="font-size:12px;color:var(--text);line-height:1.8;margin:4px 0;"><span class="amber">></span> Machine Learning — ensemble methods, time-series forecasting, regime detection</p>
+            <p style="font-size:12px;color:var(--text);line-height:1.8;margin:4px 0;"><span class="amber">></span> Software Engineering — full-stack, API design, serverless architecture</p>
+          </div>
+          <div>
+            <p style="font-size:12px;color:var(--text);line-height:1.8;margin:4px 0;"><span class="amber">></span> AI / LLMs — prompt engineering, conversational AI, multi-agent systems</p>
+            <p style="font-size:12px;color:var(--text);line-height:1.8;margin:4px 0;"><span class="amber">></span> Sports Analytics — cricket modeling, Elo ratings, prediction markets</p>
+            <p style="font-size:12px;color:var(--text);line-height:1.8;margin:4px 0;"><span class="amber">></span> Startups — building products, shipping fast, learning from users</p>
+          </div>
+        </div>
+
+        <!-- Currently -->
+        <div class="h3">CURRENTLY</div>
+        <hr class="sep">
+        <div class="three-col" style="margin:12px 0 24px;">
+          <div class="dashed-box">
+            <div class="dashed-title">Building</div>
+            <p><span class="amber">Debately</span> — AI debate platform with Gemini. Users argue positions, AI judges arguments in real-time.</p>
+            <p style="margin-top:6px;"><span class="dim">Stack:</span> Next.js · React · Gemini API</p>
+          </div>
+          <div class="dashed-box">
+            <div class="dashed-title">Reading</div>
+            <p><span class="amber">Advances in Financial ML</span> — Marcos López de Prado</p>
+            <p style="margin-top:6px;"><span class="amber">Designing Data-Intensive Applications</span> — Martin Kleppmann</p>
+          </div>
+          <div class="dashed-box">
+            <div class="dashed-title">Thinking About</div>
+            <p>How to combine LLM reasoning with quantitative signals for alpha generation.</p>
+            <p style="margin-top:6px;">Whether transformer architectures can replace traditional factor models.</p>
+          </div>
+        </div>
+
+        <!-- Recent Thoughts -->
+        <div class="h3">RECENT THOUGHTS</div>
+        <hr class="sep">
+        <div class="dashed-box" style="margin-top:12px;">
+          <p><span class="amber">></span> Most "AI" products are just wrappers around an API call. The real value is in the data pipeline and the UX around the response.</p>
+          <p><span class="amber">></span> Walk-forward validation should be table stakes for any time-series model. Backtesting without it is just curve-fitting.</p>
+          <p><span class="amber">></span> The best way to learn a new stack is to ship something with it. Tutorials are a trap.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════ -->
+    <!-- F3 POSITIONS                       -->
+    <!-- ══════════════════════════════════ -->
+    <div class="panel" id="p-positions">
+      <div class="panel-box full">
+        <div class="box-title">Active Positions (Projects)</div>
+        <table class="pos-table">
+          <thead><tr><th>TICKER</th><th>DESCRIPTION</th><th>STACK</th><th>RETURN</th><th></th></tr></thead>
+          <tbody>
+            <tr>
+              <td><span class="pos-sym">ROBOADVISOR.PY</span></td>
+              <td>ML Portfolio System — Ensemble + GMM + Kelly</td>
+              <td><span class="pos-stack">Python · scikit-learn · GMM</span></td>
+              <td><span class="green">+23% YTD</span></td>
+              <td><button class="view-btn" onclick="openModal('roboadvisor')">VIEW ↗</button></td>
+            </tr>
+            <tr>
+              <td><span class="pos-sym">T20WC.PY</span></td>
+              <td>T20 World Cup Match Predictor — Elo + LogReg</td>
+              <td><span class="pos-stack">Python · Streamlit · Elo</span></td>
+              <td><span class="green">68% ACC</span></td>
+              <td><button class="view-btn" onclick="openModal('t20wc')">VIEW ↗</button></td>
+            </tr>
+            <tr>
+              <td><span class="pos-sym">DEBATELY.AI</span></td>
+              <td>AI Debate Platform — Argue positions, AI judges</td>
+              <td><span class="pos-stack">Next.js · React · Gemini</span></td>
+              <td><span class="amber" style="font-weight:600;">WIP</span></td>
+              <td><button class="view-btn" onclick="openModal('debately')">VIEW ↗</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="panel-box full" style="margin-top:16px;">
+        <div class="box-title">Experience</div>
+        <table class="pos-table">
+          <thead><tr><th>TICKER</th><th>DESCRIPTION</th><th>STACK</th><th>PERIOD</th><th></th></tr></thead>
+          <tbody>
+            <tr>
+              <td><span class="pos-sym">KROWNIE</span></td>
+              <td>Software Engineer Co-op — AI Interview Platform</td>
+              <td><span class="pos-stack">Node.js · OpenAI · AWS</span></td>
+              <td><span class="dim">2024</span></td>
+              <td><button class="view-btn" onclick="openModal('krownie')">VIEW ↗</button></td>
+            </tr>
+            <tr>
+              <td><span class="pos-sym">KATSAH</span></td>
+              <td>Finance Co-op — Fintech Analytics</td>
+              <td><span class="pos-stack">SQL · Excel · Analytics</span></td>
+              <td><span class="dim">2024</span></td>
+              <td><button class="view-btn" onclick="openModal('katsah')">VIEW ↗</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════ -->
+    <!-- F4 CONTACT                         -->
+    <!-- ══════════════════════════════════ -->
+    <div class="panel" id="p-contact">
+      <div class="panel-box full">
+        <div class="box-title">Initiate Contact</div>
+        <div class="contact-row">
+          <span class="contact-label">EMAIL</span>
+          <span class="contact-val"><a href="mailto:uicheema@uwaterloo.ca">uicheema@uwaterloo.ca</a></span>
+          <span class="contact-action"><button class="copy-btn" onclick="copyEmail(this)">[ COPY ]</button></span>
+        </div>
+        <div class="contact-row">
+          <span class="contact-label">LINKEDIN</span>
+          <span class="contact-val"><a href="https://linkedin.com/in/umer-cheema-428701310" target="_blank">linkedin.com/in/umer-cheema-428701310</a></span>
+          <span class="contact-action"><button class="open-btn" onclick="window.open('https://linkedin.com/in/umer-cheema-428701310','_blank')">[ OPEN ↗ ]</button></span>
+        </div>
+        <div class="contact-row">
+          <span class="contact-label">GITHUB</span>
+          <span class="contact-val"><a href="https://github.com/1cheema1" target="_blank">github.com/1cheema1</a></span>
+          <span class="contact-action"><button class="open-btn" onclick="window.open('https://github.com/1cheema1','_blank')">[ OPEN ↗ ]</button></span>
+        </div>
+        <hr class="sep" style="margin-top:20px;">
+        <div style="margin-top:12px;">
+          <div class="label" style="margin-bottom:8px;">> TYPE YOUR MESSAGE BELOW AND PRESS SEND</div>
+          <textarea id="msg-area" placeholder="Enter message..." spellcheck="false"></textarea>
+          <button id="send-btn" onclick="sendMessage()">[ SEND TRANSMISSION ]</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- FOOTER -->
+  <div id="footer">UMER CHEEMA TERMINAL · BUILD 2026 · ALL RIGHTS RESERVED</div>
+</div>
+
+<!-- ══ MODAL ══ -->
+<div id="modal-overlay">
+  <div id="modal">
+    <div id="modal-header">
+      <span class="modal-title" id="modal-title"></span>
+      <button id="modal-close" onclick="closeModal()">[ ESC ]</button>
+    </div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════
+// MODAL DATA
+// ═══════════════════════════════════════
+const modalData = {
+  roboadvisor: {
+    title: 'ROBOADVISOR.PY — POSITION DETAIL',
+    body: `
+      <p class="amber" style="font-size:14px;font-weight:600;">ML Robo-Advisory Dashboard</p>
+      <hr class="sep">
+      <p>ML-powered portfolio management system using an <strong style="color:var(--amber)">LR + Random Forest + GBM ensemble</strong> with GMM regime detection and Kelly criterion position sizing (fractional, capped at 25%).</p>
+      <div style="margin:16px 0;">
+        <div class="modal-stat"><span class="dim">METHODOLOGY</span><span>Walk-forward validated · 35 periods</span></div>
+        <div class="modal-stat"><span class="dim">YTD RETURN</span><span class="green">+23% vs +19% S&P 500</span></div>
+        <div class="modal-stat"><span class="dim">PORTFOLIO SIZE</span><span>$1M CAD simulated</span></div>
+        <div class="modal-stat"><span class="dim">REBALANCING</span><span>Monthly · Sector caps · Liquidity screens</span></div>
+        <div class="modal-stat"><span class="dim">RISK MGMT</span><span>5% stop-loss · Risk parity fallback in uncertain regimes</span></div>
+      </div>
+      <hr class="sep">
+      <p style="font-size:11px;">
+        <span class="tag">Python</span><span class="tag">scikit-learn</span><span class="tag">GMM</span><span class="tag">Kelly Criterion</span><span class="tag">Walk-Forward</span>
+      </p>
+      <hr class="sep">
+      <p>
+        <a href="https://robo-advisor-two.vercel.app" target="_blank">LIVE ↗</a> &nbsp;·&nbsp;
+        <a href="https://github.com/1cheema1/RoboAdvisor" target="_blank">GITHUB ↗</a>
+      </p>`
+  },
+  t20wc: {
+    title: 'T20WC.PY — POSITION DETAIL',
+    body: `
+      <p class="amber" style="font-size:14px;font-weight:600;">T20 World Cup 2026 Match Predictor</p>
+      <hr class="sep">
+      <p>Logistic regression model trained on <strong style="color:var(--amber)">10+ years of T20 international match data</strong> to predict match outcomes.</p>
+      <ul>
+        <li>Features: Elo ratings, rolling form (last 10 matches), head-to-head record, toss impact, venue factors</li>
+        <li>Blended 70/30 with official ICC T20I rankings for calibrated predictions</li>
+        <li>Interactive dashboard with live tournament bracket simulation</li>
+      </ul>
+      <hr class="sep">
+      <p style="font-size:11px;">
+        <span class="tag">Python</span><span class="tag">Logistic Regression</span><span class="tag">Elo Ratings</span><span class="tag">Streamlit</span>
+      </p>
+      <hr class="sep">
+      <p>
+        <a href="https://t20wc-one.vercel.app" target="_blank">LIVE ↗</a> &nbsp;·&nbsp;
+        <a href="https://github.com/1cheema1/t20wc" target="_blank">GITHUB ↗</a>
+      </p>`
+  },
+  debately: {
+    title: 'DEBATELY.AI — POSITION DETAIL',
+    body: `
+      <p class="amber" style="font-size:14px;font-weight:600;">Debately — AI Debate Platform</p>
+      <p class="dim" style="font-size:11px;">STATUS: WORK IN PROGRESS</p>
+      <hr class="sep">
+      <p>An AI-powered debate platform where users argue positions on topics and <strong style="color:var(--amber)">Gemini AI judges the arguments in real-time</strong>, providing scoring, counterpoints, and feedback.</p>
+      <ul>
+        <li>Real-time argument evaluation using Gemini API with structured prompting</li>
+        <li>Multi-round debate format with scoring rubric (logic, evidence, rhetoric)</li>
+        <li>Full-stack Next.js app with React frontend and server-side API routes</li>
+        <li>Topic selection, argument submission, AI-generated rebuttals and verdicts</li>
+      </ul>
+      <div style="margin:16px 0;">
+        <div class="modal-stat"><span class="dim">STATUS</span><span class="amber">In Development</span></div>
+        <div class="modal-stat"><span class="dim">STACK</span><span>Next.js · React · Gemini API</span></div>
+        <div class="modal-stat"><span class="dim">ARCHITECTURE</span><span>Server-side API routes · Streaming responses</span></div>
+      </div>
+      <hr class="sep">
+      <p style="font-size:11px;">
+        <span class="tag">Next.js</span><span class="tag">React</span><span class="tag">Gemini API</span><span class="tag">TypeScript</span><span class="tag">Tailwind</span>
+      </p>
+      <hr class="sep">
+      <p>
+        <a href="https://github.com/1cheema1/debately" target="_blank">GITHUB ↗</a>
+      </p>`
+  },
+  krownie: {
+    title: 'KROWNIE — EXPERIENCE DETAIL',
+    body: `
+      <p class="amber" style="font-size:14px;font-weight:600;">Krownie — Software Engineer Co-op</p>
+      <p class="dim" style="font-size:11px;">AI Interview Platform · 2024</p>
+      <hr class="sep">
+      <ul>
+        <li>Built <strong style="color:var(--amber)">real-time voice interview pipelines</strong> using OpenAI API + Retell AI for automated candidate screening</li>
+        <li>Architected serverless backend on AWS Lambda / S3 / Supabase for scalable interview processing</li>
+        <li>Achieved <strong class="green">35% accuracy improvement</strong> in response evaluation through iterative prompt engineering</li>
+        <li>Designed conversation flow state machines handling edge cases, interruptions, and multi-turn dialogue</li>
+      </ul>
+      <hr class="sep">
+      <p style="font-size:11px;">
+        <span class="tag">OpenAI API</span><span class="tag">Retell AI</span><span class="tag">AWS Lambda</span><span class="tag">S3</span><span class="tag">Supabase</span><span class="tag">Node.js</span>
+      </p>`
+  },
+  katsah: {
+    title: 'KATSAH — EXPERIENCE DETAIL',
+    body: `
+      <p class="amber" style="font-size:14px;font-weight:600;">Katsah — Finance Co-op</p>
+      <p class="dim" style="font-size:11px;">Fintech / Analytics · 2024</p>
+      <hr class="sep">
+      <ul>
+        <li>Performed <strong style="color:var(--amber)">SQL funnel analysis</strong> identifying drop-off points, recovering <strong class="green">50-60% of lost conversions</strong></li>
+        <li>Built Excel variance models for budget vs. actual analysis across departments</li>
+        <li>Created automated MoM KPI tracking dashboards for executive reporting</li>
+        <li>Analyzed user behavior data to inform product decisions and feature prioritization</li>
+      </ul>
+      <hr class="sep">
+      <p style="font-size:11px;">
+        <span class="tag">SQL</span><span class="tag">Excel</span><span class="tag">Data Analysis</span><span class="tag">KPI Dashboards</span>
+      </p>`
+  }
+};
+
+// ═══════════════════════════════════════
+// BOOT SEQUENCE
+// ═══════════════════════════════════════
+(function boot() {
+  const lines = document.querySelectorAll('#boot-log .line');
+  lines.forEach((line, i) => {
+    setTimeout(() => line.classList.add('show'), 100 + i * 120);
+  });
+  setTimeout(() => {
+    document.getElementById('boot-screen').classList.add('hidden');
+    document.getElementById('app').classList.add('booted');
+    setTimeout(() => document.getElementById('boot-screen').style.display = 'none', 500);
+  }, 100 + lines.length * 120 + 600);
+})();
+
+// ═══════════════════════════════════════
+// CLOCK
+// ═══════════════════════════════════════
+function updateClock() {
+  const now = new Date();
+  const h = String(now.getHours()).padStart(2, '0');
+  const m = String(now.getMinutes()).padStart(2, '0');
+  const s = String(now.getSeconds()).padStart(2, '0');
+  document.getElementById('clock').textContent = h + ':' + m + ':' + s + ' EST';
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ═══════════════════════════════════════
+// RESEARCH DATE
+// ═══════════════════════════════════════
+document.getElementById('research-date').textContent = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }).toUpperCase();
+
+// ═══════════════════════════════════════
+// TICKER
+// ═══════════════════════════════════════
+(function buildTicker() {
+  const items = [
+    { sym: 'SPY', price: '598.24', change: '\u25B21.2%', up: true },
+    { sym: 'BTC', price: '84,210', change: '\u25BC0.4%', up: false },
+    { sym: 'AAPL', price: '213.40', change: '\u25B20.8%', up: true },
+    { sym: 'MSFT', price: '441.18', change: '\u25B20.3%', up: true },
+    { sym: 'TSLA', price: '342.55', change: '\u25BC1.2%', up: false },
+    { sym: 'NVDA', price: '138.92', change: '\u25B22.1%', up: true },
+    { sym: 'QQQ', price: '518.73', change: '\u25B20.9%', up: true },
+    { sym: 'ETH', price: '3,412', change: '\u25B21.7%', up: true },
+    { special: true, text: '$UMER \u2014 OPEN TO CO-OP' },
+    { sym: 'VOO', price: '551.08', change: '\u25B21.1%', up: true },
+    { sym: 'AMZN', price: '218.34', change: '\u25B20.5%', up: true },
+    { sym: 'META', price: '612.30', change: '\u25BC0.3%', up: false },
+  ];
+  let html = '';
+  for (let rep = 0; rep < 2; rep++) {
+    items.forEach(it => {
+      if (it.special) {
+        html += '<span class="tick-item"><span class="tick-special">' + it.text + '</span></span>';
+      } else {
+        html += '<span class="tick-item"><span class="tick-sym">' + it.sym + '</span><span class="tick-price">' + it.price + '</span><span class="' + (it.up ? 'tick-up' : 'tick-down') + '">' + it.change + '</span></span>';
+      }
+    });
+  }
+  document.getElementById('ticker').innerHTML = html;
+})();
+
+// ═══════════════════════════════════════
+// NAV
+// ═══════════════════════════════════════
+function switchPanel(id) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('p-' + id).classList.add('active');
+  document.querySelector('.nav-btn[data-panel="' + id + '"]').classList.add('active');
+}
+
+// Keyboard shortcuts
+document.addEventListener('keydown', e => {
+  if (document.getElementById('modal-overlay').classList.contains('open')) {
+    if (e.key === 'Escape') closeModal();
+    return;
+  }
+  const map = { F1: 'overview', F2: 'research', F3: 'positions', F4: 'contact' };
+  if (map[e.key]) { e.preventDefault(); switchPanel(map[e.key]); }
+  if (e.key === 'Escape') closeModal();
+});
+
+// ═══════════════════════════════════════
+// MODAL
+// ═══════════════════════════════════════
+function openModal(key) {
+  const data = modalData[key];
+  if (!data) return;
+  document.getElementById('modal-title').textContent = data.title;
+  document.getElementById('modal-body').innerHTML = data.body;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+}
+
+document.getElementById('modal-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal-overlay')) closeModal();
+});
+
+// ═══════════════════════════════════════
+// COPY EMAIL
+// ═══════════════════════════════════════
+function copyEmail(btn) {
+  navigator.clipboard.writeText('uicheema@uwaterloo.ca').then(() => {
+    btn.textContent = '[ COPIED \u2713 ]';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.textContent = '[ COPY ]';
+      btn.classList.remove('copied');
+    }, 2000);
+  });
+}
+
+// ═══════════════════════════════════════
+// CONTACT — SEND
+// ═══════════════════════════════════════
+function sendMessage() {
+  const msg = document.getElementById('msg-area').value.trim();
+  if (!msg) return;
+  const mailto = 'mailto:uicheema@uwaterloo.ca?subject=Terminal%20Contact&body=' + encodeURIComponent(msg);
+  window.open(mailto);
+}
+</script>
+</body>
+</html>
