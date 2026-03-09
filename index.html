@@ -32,7 +32,7 @@ body::after{content:'';position:fixed;inset:0;z-index:9999;pointer-events:none;
 #boot-screen{position:fixed;inset:0;z-index:10000;background:var(--bg);display:flex;flex-direction:row;align-items:center;justify-content:center;padding:10% 8%;gap:60px;transition:opacity 0.4s ease;}
 #boot-screen.hidden{opacity:0;pointer-events:none;}
 #boot-log{font-size:11px;color:var(--green);line-height:1.8;flex-shrink:0;}
-#boot-log .line{opacity:0;transform:translateY(4px);transition:all 0.15s ease;}
+#boot-log .line{opacity:0;transform:translateY(4px);transition:all 0.25s ease;}
 #boot-log .line.show{opacity:1;transform:translateY(0);}
 #boot-graph{flex:1;max-width:420px;min-width:200px;height:220px;position:relative;opacity:0;transition:opacity 0.5s ease 0.2s;}
 #boot-graph.show{opacity:1;}
@@ -663,7 +663,7 @@ const modalData = {
 (function boot() {
   const lines = document.querySelectorAll('#boot-log .line');
   lines.forEach((line, i) => {
-    setTimeout(() => line.classList.add('show'), 100 + i * 120);
+    setTimeout(() => line.classList.add('show'), 150 + i * 220);
   });
 
   // Animate stock graph
@@ -701,7 +701,7 @@ const modalData = {
   graphFill.setAttribute('d', fillD);
   graphFill.style.clipPath = 'inset(0 100% 0 0)';
 
-  const animDuration = lines.length * 120 + 200; // sync with boot log lines
+  const animDuration = lines.length * 220 + 300; // sync with boot log lines
   const startTime = performance.now() + 300;
 
   function animateGraph(now) {
@@ -719,7 +719,7 @@ const modalData = {
     document.getElementById('boot-screen').classList.add('hidden');
     document.getElementById('app').classList.add('booted');
     setTimeout(() => document.getElementById('boot-screen').style.display = 'none', 500);
-  }, 100 + lines.length * 120 + 1600);
+  }, 150 + lines.length * 220 + 1600);
 })();
 
 // ═══════════════════════════════════════
