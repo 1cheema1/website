@@ -78,15 +78,15 @@ body::after{content:'';position:fixed;inset:0;z-index:9999;pointer-events:none;
 .nav-btn .key{font-weight:700;margin-right:4px;font-size:10px;}
 
 /* ── MAIN ── */
-#main{flex:1;padding:16px;overflow-y:auto;display:flex;flex-direction:column;}
+#main{flex:1;padding:24px;overflow-y:auto;display:flex;flex-direction:column;}
 .panel{display:none;}
 .panel.active{display:flex;flex-direction:column;flex:1;animation:panelIn 0.15s ease;}
 @keyframes panelIn{0%{opacity:0;}100%{opacity:1;}}
 
 /* ── PANELS GRID ── */
-.panel-grid{display:grid;grid-template-columns:1.2fr 1fr;gap:12px;}
-.panel-box{border:1px solid var(--border);padding:16px;background:var(--bg2);position:relative;}
-.panel-box .box-title{font-size:10px;letter-spacing:2px;color:var(--amber);text-transform:uppercase;margin-bottom:10px;padding-bottom:5px;border-bottom:1px solid var(--border);font-weight:600;}
+.panel-grid{display:grid;grid-template-columns:1.2fr 1fr;gap:16px;}
+.panel-box{border:1px solid var(--border);padding:20px;background:var(--bg2);position:relative;}
+.panel-box .box-title{font-size:10px;letter-spacing:2px;color:var(--amber);text-transform:uppercase;margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid var(--border);font-weight:600;}
 .panel-box.full{grid-column:1/-1;}
 
 /* ── TEXT STYLES ── */
@@ -113,7 +113,7 @@ body::after{content:'';position:fixed;inset:0;z-index:9999;pointer-events:none;
 .profile-header{display:flex;align-items:center;gap:24px;margin-bottom:12px;}
 .profile-photo-wrap{position:relative;flex-shrink:0;z-index:10000;margin-left:24px;}
 .profile-photo-wrap::before{content:'';position:absolute;inset:-16px;border-radius:50%;background:radial-gradient(circle,rgba(255,153,0,0.12) 0%,transparent 70%);z-index:0;}
-.profile-photo{width:240px;height:240px;border-radius:50%;border:2px solid var(--amber);object-fit:cover;box-shadow:0 0 24px rgba(255,153,0,0.2);display:block;position:relative;z-index:10001;}
+.profile-photo{width:300px;height:300px;border-radius:50%;border:2px solid var(--amber);object-fit:cover;box-shadow:0 0 24px rgba(255,153,0,0.2);display:block;position:relative;z-index:10001;}
 .profile-info{flex:1;padding-top:4px;}
 .bio-line{margin:4px 0;font-size:13px;}
 .bio-line .prompt{color:var(--amber);margin-right:6px;}
@@ -125,9 +125,9 @@ body::after{content:'';position:fixed;inset:0;z-index:9999;pointer-events:none;
 .stat-val.down{color:var(--red);}
 
 /* Quick Stats Grid */
-.quick-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:10px;}
-.qs-cell{border:1px solid var(--border);padding:10px 8px;text-align:center;background:var(--bg);}
-.qs-val{font-size:20px;font-weight:700;color:var(--amber);margin-bottom:4px;}
+.quick-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:12px;}
+.qs-cell{border:1px solid var(--border);padding:16px 12px;text-align:center;background:var(--bg);}
+.qs-val{font-size:24px;font-weight:700;color:var(--amber);margin-bottom:6px;}
 .qs-label{font-size:8px;letter-spacing:1.5px;color:var(--text-dim);text-transform:uppercase;}
 
 /* Tech Stack Pills */
@@ -138,20 +138,20 @@ body::after{content:'';position:fixed;inset:0;z-index:9999;pointer-events:none;
 .tech-pill.green-pill:hover{background:var(--green);color:var(--bg);}
 
 /* ── SNAKE GAME ── */
-#snake-box{margin-top:12px;}
-#snake-wrap{display:flex;align-items:flex-start;gap:16px;margin-top:6px;}
+#snake-box{margin-top:0;}
+#snake-wrap{display:flex;align-items:stretch;gap:12px;margin-top:6px;}
 #snake-canvas-wrap{position:relative;border:1px solid var(--border);background:#050505;flex-shrink:0;}
 #snake-canvas{display:block;}
 #snake-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(10,10,10,0.85);z-index:2;transition:opacity 0.2s;}
 #snake-overlay.hidden{opacity:0;pointer-events:none;}
-#snake-overlay .snake-prompt{color:var(--amber);font-size:14px;font-weight:700;letter-spacing:2px;margin-bottom:8px;}
-#snake-overlay .snake-sub{color:var(--text-dim);font-size:10px;letter-spacing:1px;}
-#snake-overlay .snake-score-final{color:var(--green);font-size:28px;font-weight:700;margin-bottom:4px;}
-#snake-info{display:flex;flex-direction:column;gap:8px;font-size:10px;color:var(--text-dim);letter-spacing:0.5px;min-width:120px;}
-#snake-info .snake-stat{border:1px solid var(--border);padding:8px;text-align:center;background:var(--bg);}
-#snake-info .snake-stat-val{font-size:18px;font-weight:700;color:var(--green);margin-bottom:2px;}
+#snake-overlay .snake-prompt{color:var(--amber);font-size:12px;font-weight:700;letter-spacing:2px;margin-bottom:4px;}
+#snake-overlay .snake-sub{color:var(--text-dim);font-size:9px;letter-spacing:1px;}
+#snake-overlay .snake-score-final{color:var(--green);font-size:22px;font-weight:700;margin-bottom:2px;}
+#snake-info{display:flex;flex-direction:column;gap:6px;font-size:10px;color:var(--text-dim);letter-spacing:0.5px;flex:1;min-width:100px;}
+#snake-info .snake-stat{border:1px solid var(--border);padding:10px;text-align:center;background:var(--bg);}
+#snake-info .snake-stat-val{font-size:20px;font-weight:700;color:var(--green);margin-bottom:4px;}
 #snake-info .snake-stat-label{font-size:8px;letter-spacing:1.5px;color:var(--text-dim);text-transform:uppercase;}
-#snake-info .snake-controls{border:1px solid var(--border);padding:10px;background:var(--bg);line-height:2;}
+#snake-info .snake-controls{border:1px solid var(--border);padding:8px 10px;background:var(--bg);line-height:1.8;font-size:9px;}
 #snake-info .snake-key{display:inline-block;border:1px solid var(--amber-dim);color:var(--amber);padding:1px 6px;font-size:9px;margin:0 2px;font-family:'JetBrains Mono',monospace;}
 @media(max-width:768px){
   #snake-wrap{flex-direction:column;align-items:center;}
@@ -417,7 +417,7 @@ body::after{content:'';position:fixed;inset:0;z-index:9999;pointer-events:none;
         <div class="box-title">TERMINAL ARCADE — SNAKE <span class="dim">// beat my high score</span></div>
         <div id="snake-wrap">
           <div id="snake-canvas-wrap">
-            <canvas id="snake-canvas" width="480" height="240"></canvas>
+            <canvas id="snake-canvas" width="400" height="160"></canvas>
             <div id="snake-overlay">
               <div class="snake-prompt">🐍 SNAKE</div>
               <div class="snake-sub">PRESS SPACE TO START</div>
@@ -969,7 +969,7 @@ document.getElementById('research-date').textContent = new Date().toLocaleDateSt
   document.addEventListener('keydown', (e) => {
     // Only handle snake keys when overview panel is visible
     const overviewPanel = document.getElementById('p-overview');
-    if (overviewPanel && overviewPanel.style.display === 'none') return;
+    if (!overviewPanel || !overviewPanel.classList.contains('active')) return;
 
     if (e.code === 'Space') {
       e.preventDefault();
