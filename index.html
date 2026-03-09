@@ -356,7 +356,7 @@ body::after{content:'';position:fixed;inset:0;z-index:9999;pointer-events:none;
                 <div class="qs-label">INTERNSHIPS</div>
               </div>
               <div class="qs-cell">
-                <div class="qs-val">3</div>
+                <div class="qs-val">6</div>
                 <div class="qs-label">PROJECTS</div>
               </div>
               <div class="qs-cell">
@@ -537,6 +537,27 @@ body::after{content:'';position:fixed;inset:0;z-index:9999;pointer-events:none;
               <td><span class="pos-stack">Next.js · React · Gemini</span></td>
               <td><span class="amber" style="font-weight:600;">WIP</span></td>
               <td><button class="view-btn" onclick="openModal('debately')">VIEW ↗</button></td>
+            </tr>
+            <tr>
+              <td><span class="pos-sym">$CFM101.PY</span></td>
+              <td>Robo-Advising Challenge — Factor-Based Optimization</td>
+              <td><span class="pos-stack">Python · yfinance · NumPy</span></td>
+              <td><span class="green">+8.1% NET</span></td>
+              <td><button class="view-btn" onclick="openModal('cfm101')">VIEW ↗</button></td>
+            </tr>
+            <tr>
+              <td><span class="pos-sym">$SUBTRACK</span></td>
+              <td>Subscription Burn Rate Tracker — Analytics Dashboard</td>
+              <td><span class="pos-stack">Python · PostgreSQL · Vercel</span></td>
+              <td><span class="green">LIVE</span></td>
+              <td><button class="view-btn" onclick="openModal('subtrack')">VIEW ↗</button></td>
+            </tr>
+            <tr>
+              <td><span class="pos-sym">$ZARF</span></td>
+              <td>Pre-Nikah Clarity Platform — Hackathon Project</td>
+              <td><span class="pos-stack">Next.js · Prisma · Supabase</span></td>
+              <td><span class="green">LIVE</span></td>
+              <td><button class="view-btn" onclick="openModal('zarf')">VIEW ↗</button></td>
             </tr>
           </tbody>
         </table>
@@ -720,6 +741,88 @@ const modalData = {
       <hr class="sep">
       <p style="font-size:11px;">
         <span class="tag">SQL</span><span class="tag">Excel</span><span class="tag">Data Analysis</span><span class="tag">KPI Dashboards</span>
+      </p>`
+  },
+  cfm101: {
+    title: 'CFM101.PY — POSITION DETAIL',
+    body: `
+      <p class="amber" style="font-size:14px;font-weight:600;">CFM 101 — Robo-Advising Challenge</p>
+      <p class="dim" style="font-size:11px;">Portfolio Optimization · Group Project</p>
+      <hr class="sep">
+      <p>Built a portfolio optimization system that deployed <strong style="color:var(--amber)">$1M CAD across North American equities</strong> using a fully systematic, rules-based approach.</p>
+      <div style="margin:16px 0;">
+        <div class="modal-stat"><span class="dim">METHODOLOGY</span><span>Four-factor scoring · Monte Carlo optimization</span></div>
+        <div class="modal-stat"><span class="dim">FACTORS</span><span>Momentum · Volatility · SMA-200 · RSI (14-day)</span></div>
+        <div class="modal-stat"><span class="dim">OPTIMIZATION</span><span>100 Monte Carlo trials · Max Sharpe ratio</span></div>
+        <div class="modal-stat"><span class="dim">CONSTRAINTS</span><span>40% sector cap · 15% stock cap · Liquidity screen</span></div>
+        <div class="modal-stat"><span class="dim">COSTS</span><span>$0.001/share · Max $2.15 CAD/trade</span></div>
+      </div>
+      <hr class="sep">
+      <div style="margin:12px 0;">
+        <div class="modal-stat"><span class="dim">PORTFOLIO VALUE</span><span class="green">$1,081,247.97 CAD</span></div>
+        <div class="modal-stat"><span class="dim">NET RETURN</span><span class="green">+8.1%</span></div>
+        <div class="modal-stat"><span class="dim">TOTAL FEES</span><span>$10.71 CAD</span></div>
+        <div class="modal-stat"><span class="dim">POSITIONS</span><span>15 stocks</span></div>
+      </div>
+      <hr class="sep">
+      <p class="dim" style="font-size:10px;letter-spacing:1px;margin-bottom:6px;">TOP HOLDINGS</p>
+      <p style="font-size:11px;">MO 15.26% · PM 14.09% · BK 8.24% · LMT 7.75% · RY.TO 6.73% · CAT 6.63%</p>
+      <hr class="sep">
+      <p style="font-size:11px;">
+        <span class="tag">Python</span><span class="tag">yfinance</span><span class="tag">NumPy</span><span class="tag">Monte Carlo</span><span class="tag">Factor Investing</span>
+      </p>
+      <hr class="sep">
+      <p>
+        <a href="https://github.com/prithvishahh/CFM-RoboAdvising-Challenge" target="_blank">GITHUB ↗</a>
+      </p>`
+  },
+  subtrack: {
+    title: 'SUBTRACK — POSITION DETAIL',
+    body: `
+      <p class="amber" style="font-size:14px;font-weight:600;">SubTrack — Subscription Burn Rate Tracker</p>
+      <p class="dim" style="font-size:11px;">Fintech Analytics · Live</p>
+      <hr class="sep">
+      <p>Full-stack web app for tracking and analyzing recurring subscription spending. Users get a <strong style="color:var(--amber)">private dashboard</strong> with real-time burn rate analytics, category breakdowns, and cost optimization insights.</p>
+      <ul>
+        <li>Per-user dashboards with <strong style="color:var(--amber)">monthly & annual burn rate</strong> calculations</li>
+        <li>Category-level spending breakdowns with percentage bars</li>
+        <li>Auto-highlights <strong class="green">top 3 most expensive</strong> subscriptions</li>
+        <li>Cloud-persisted data via PostgreSQL — works across devices</li>
+        <li>Multi-tenant: isolated data per username</li>
+      </ul>
+      <hr class="sep">
+      <p style="font-size:11px;">
+        <span class="tag">Python</span><span class="tag">PostgreSQL</span><span class="tag">Vercel</span><span class="tag">Full-Stack</span>
+      </p>
+      <hr class="sep">
+      <p>
+        <a href="https://sub-track-amber.vercel.app" target="_blank">LIVE ↗</a> &nbsp;·&nbsp;
+        <a href="https://github.com/Hannanahmed0/SubTrack" target="_blank">GITHUB ↗</a>
+      </p>`
+  },
+  zarf: {
+    title: 'ZARF — POSITION DETAIL',
+    body: `
+      <p class="amber" style="font-size:14px;font-weight:600;">ZARF — Pre-Nikah Clarity Platform</p>
+      <p class="dim" style="font-size:11px;">Hackathon Project · Live</p>
+      <hr class="sep">
+      <p>Structured pre-marriage compatibility platform that replaces awkward guesswork with <strong style="color:var(--amber)">data-driven clarity</strong>. Not a dating app — built for couples who already have a serious lead and want honest alignment before commitment.</p>
+      <ul>
+        <li>Private couple linking via <strong style="color:var(--amber)">invite codes</strong> — no swiping, no discovery</li>
+        <li>Structured profiles covering deen, finances, family expectations, conflict style</li>
+        <li><strong class="green">Double-blind conflict scenarios</strong> — responses revealed only after both submit, preventing agreement bias</li>
+        <li>Financial stress test: flags sustainability gaps (Sustainable / Tight / Unsustainable)</li>
+        <li>Generates printable clarity guide for families, wali, or scholars</li>
+        <li>Guest mode for quick exploration without sign-up</li>
+      </ul>
+      <hr class="sep">
+      <p style="font-size:11px;">
+        <span class="tag">Next.js 14</span><span class="tag">TypeScript</span><span class="tag">Tailwind</span><span class="tag">Prisma</span><span class="tag">Supabase</span><span class="tag">Vercel</span>
+      </p>
+      <hr class="sep">
+      <p>
+        <a href="https://usezarf.vercel.app" target="_blank">LIVE ↗</a> &nbsp;·&nbsp;
+        <a href="https://github.com/ammar-adam/zarf" target="_blank">GITHUB ↗</a>
       </p>`
   }
 };
