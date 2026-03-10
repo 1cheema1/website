@@ -142,11 +142,11 @@ body::after{content:'';position:fixed;inset:0;z-index:9999;pointer-events:none;
 #snake-wrap{display:flex;align-items:flex-start;gap:12px;margin-top:6px;}
 #snake-canvas-wrap{position:relative;border:1px solid var(--amber-dim);background:#050505;flex:1;line-height:0;}
 #snake-canvas{display:block;width:100%;height:auto;}
-#snake-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(5,5,5,0.92);z-index:2;transition:opacity 0.2s;}
+#snake-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(5,5,5,0.95);z-index:2;transition:opacity 0.2s;}
 #snake-overlay.hidden{opacity:0;pointer-events:none;}
-#snake-overlay .snake-prompt{color:var(--amber);font-size:12px;font-weight:700;letter-spacing:2px;margin-bottom:4px;}
-#snake-overlay .snake-sub{color:var(--text-dim);font-size:9px;letter-spacing:1px;}
-#snake-overlay .snake-score-final{color:var(--green);font-size:22px;font-weight:700;margin-bottom:2px;}
+#snake-overlay .snake-prompt{color:var(--amber);font-size:11px;font-weight:700;letter-spacing:2px;}
+#snake-overlay .snake-sub{color:var(--text-dim);font-size:9px;letter-spacing:1px;margin-top:6px;}
+#snake-overlay .snake-score-final{color:var(--green);font-size:18px;font-weight:700;}
 #snake-info{display:flex;flex-direction:column;gap:6px;font-size:10px;color:var(--text-dim);letter-spacing:0.5px;width:140px;flex-shrink:0;}
 #snake-info .snake-stat{border:1px solid var(--border);padding:10px;text-align:center;background:var(--bg);}
 #snake-info .snake-stat-val{font-size:20px;font-weight:700;color:var(--green);margin-bottom:4px;}
@@ -999,17 +999,10 @@ document.getElementById('research-date').textContent = new Date().toLocaleDateSt
       ctx.fillRect(seg.x*CELL+1, seg.y*CELL+1, CELL-2, CELL-2);
       ctx.globalAlpha = 1;
     });
-
-    // Score on canvas
-    ctx.fillStyle = AMBER;
-    ctx.globalAlpha = 0.3;
-    ctx.font = '9px JetBrains Mono';
-    ctx.fillText('SCORE: ' + score, 8, 14);
-    ctx.fillText('LVL: ' + level, canvas.width - 50, 14);
-    ctx.globalAlpha = 1;
   }
 
-  function update() {
+  function update() {    // Snake
+
     if (!alive || paused) return;
     dir = nextDir;
     const head = {x: snake[0].x + dir.x, y: snake[0].y + dir.y};
@@ -1057,11 +1050,7 @@ document.getElementById('research-date').textContent = new Date().toLocaleDateSt
     ctx.globalAlpha = 1;
 
     overlay.classList.remove('hidden');
-    overlay.innerHTML = `
-      <div class="snake-prompt">GAME OVER</div>
-      <div class="snake-score-final" style="margin:8px 0 4px;">${score}</div>
-      <div class="snake-sub">PRESS SPACE TO PLAY AGAIN</div>
-    `;
+    overlay.innerHTML = '<div class="snake-prompt">GAME OVER</div><div class="snake-score-final" style="margin:10px 0 6px;">SCORE: ' + score + '</div><div class="snake-sub">PRESS SPACE TO PLAY AGAIN</div>';
   }
 
   function tick() {
