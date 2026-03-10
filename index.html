@@ -140,14 +140,14 @@ body::after{content:'';position:fixed;inset:0;z-index:9999;pointer-events:none;
 /* ── SNAKE GAME ── */
 #snake-box{margin-top:0;}
 #snake-wrap{display:flex;align-items:flex-start;gap:12px;margin-top:6px;}
-#snake-canvas-wrap{position:relative;border:1px solid var(--amber-dim);background:#050505;flex-shrink:0;line-height:0;}
-#snake-canvas{display:block;}
-#snake-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(10,10,10,0.85);z-index:2;transition:opacity 0.2s;}
+#snake-canvas-wrap{position:relative;border:1px solid var(--amber-dim);background:#050505;flex:1;line-height:0;}
+#snake-canvas{display:block;width:100%;height:auto;}
+#snake-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(5,5,5,0.92);z-index:2;transition:opacity 0.2s;}
 #snake-overlay.hidden{opacity:0;pointer-events:none;}
 #snake-overlay .snake-prompt{color:var(--amber);font-size:12px;font-weight:700;letter-spacing:2px;margin-bottom:4px;}
 #snake-overlay .snake-sub{color:var(--text-dim);font-size:9px;letter-spacing:1px;}
 #snake-overlay .snake-score-final{color:var(--green);font-size:22px;font-weight:700;margin-bottom:2px;}
-#snake-info{display:flex;flex-direction:column;gap:6px;font-size:10px;color:var(--text-dim);letter-spacing:0.5px;flex:1;min-width:100px;}
+#snake-info{display:flex;flex-direction:column;gap:6px;font-size:10px;color:var(--text-dim);letter-spacing:0.5px;width:140px;flex-shrink:0;}
 #snake-info .snake-stat{border:1px solid var(--border);padding:10px;text-align:center;background:var(--bg);}
 #snake-info .snake-stat-val{font-size:20px;font-weight:700;color:var(--green);margin-bottom:4px;}
 #snake-info .snake-stat-label{font-size:8px;letter-spacing:1.5px;color:var(--text-dim);text-transform:uppercase;}
@@ -1058,8 +1058,8 @@ document.getElementById('research-date').textContent = new Date().toLocaleDateSt
 
     overlay.classList.remove('hidden');
     overlay.innerHTML = `
-      <div class="snake-score-final">${score}</div>
       <div class="snake-prompt">GAME OVER</div>
+      <div class="snake-score-final" style="margin:8px 0 4px;">${score}</div>
       <div class="snake-sub">PRESS SPACE TO PLAY AGAIN</div>
     `;
   }
