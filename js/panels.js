@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { CSS3DObject } from '../lib/CSS3DRenderer.js';
-import { CARRIER, FLANK, FLANK_WINDOW, PANEL_WINDOW, RESUME, SCREEN, SCREEN_WINDOW } from './config.js';
+import { CARRIER, carriersFor, FLANK, FLANK_WINDOW, PANEL_WINDOW, RESUME, SCREEN, SCREEN_WINDOW } from './config.js';
 import { buildScreenElements } from './screens.js';
 
 const clamp01 = v => v < 0 ? 0 : v > 1 ? 1 : v;
@@ -54,11 +54,14 @@ function holeMaterial() {
 }
 
 export function buildPanels(scene, cssScene, M, stops, market) {
+  // Portrait screens get portrait panels. Resolved once — the paper props below
+  // are built from these dimensions, so it must not change under them.
+  const CARR = carriersFor(innerWidth / innerHeight);
   const items = {};
   const holeScene = new THREE.Scene();
 
-  for (const key of Object.keys(CARRIER)) {
-    const c = CARRIER[key];
+  for (const key of Object.keys(CARR)) {
+    const c = CARR[key];
     const el = document.getElementById(key);   // element ids match carrier keys
     const scale = c.w / c.el[0];
 
@@ -149,7 +152,7 @@ export function buildPanels(scene, cssScene, M, stops, market) {
 
   // 1 · office tear sheet — real paper with a shadow underneath
   {
-    const c = CARRIER.sheet;
+    const c = CARR.sheet;
     const g = new THREE.Group();
     const paper = new THREE.Mesh(new THREE.BoxGeometry(c.w + 0.008, c.h + 0.008, 0.0012), M.paper);
     paper.position.z = -0.0012; paper.castShadow = true; paper.receiveShadow = true;
@@ -164,7 +167,7 @@ export function buildPanels(scene, cssScene, M, stops, market) {
 
   // 3 · study book — page block, boards and a ribbon
   {
-    const c = CARRIER.spread;
+    const c = CARR.spread;
     const g = new THREE.Group();
     const pages = new THREE.Mesh(new THREE.BoxGeometry(c.w + 0.006, c.h + 0.006, 0.030), M.paper);
     pages.position.z = -0.016; pages.castShadow = true; pages.receiveShadow = true; g.add(pages);
@@ -190,7 +193,7 @@ export function buildPanels(scene, cssScene, M, stops, market) {
 
   // 4 · rooftop card — thick cotton stock with a bevelled gold edge
   {
-    const c = CARRIER.card;
+    const c = CARR.card;
     const g = new THREE.Group();
     const stock = new THREE.Mesh(new THREE.BoxGeometry(c.w + 0.010, c.h + 0.010, 0.0035), M.paper);
     stock.position.z = -0.002; stock.castShadow = true; stock.receiveShadow = true; g.add(stock);
@@ -202,7 +205,7 @@ export function buildPanels(scene, cssScene, M, stops, market) {
 
   // 4b · message pad — a real pad of paper with a pen resting on it
   {
-    const c = CARRIER.note;
+    const c = CARR.note;
     const g = new THREE.Group();
     const pad = new THREE.Mesh(new THREE.BoxGeometry(c.w + 0.012, c.h + 0.014, 0.012), M.paper);
     pad.position.z = -0.007; pad.castShadow = true; pad.receiveShadow = true; g.add(pad);

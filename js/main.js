@@ -233,8 +233,10 @@ function computeStops() {
       tgt: new THREE.Vector3().fromArray(v.tgt)
     };
   }
-  for (const key of Object.keys(C.CARRIER)) {
-    const c = C.CARRIER[key];
+  // must match the set buildPanels resolved, or stops frame the wrong geometry
+  const CARR = C.carriersFor(aspect);
+  for (const key of Object.keys(CARR)) {
+    const c = CARR[key];
     const d = C.fitDistance(c, aspect);
     const tgt = new THREE.Vector3().fromArray(c.pos);
     const dir = new THREE.Vector3(0, Math.sin(c.elev), -Math.cos(c.elev));
@@ -829,7 +831,10 @@ const QUALITY = [
   { dpr: 1.15, bloom: true,  bokeh: false },   // 2 · fewer pixels
   { dpr: 1.0,  bloom: false, bokeh: false }    // 3 · floor
 ];
-let qTier = 0, qHoldUntil = 0;
+// A phone should not have to spend two seconds at tier 0 discovering it cannot
+// afford depth of field. Coarse pointer is the best available proxy for it.
+let qTier = matchMedia('(pointer: coarse)').matches ? 2 : 0;
+let qHoldUntil = 0;
 // Downward-biased on purpose. Stepping down is cheap insurance; stepping back
 // up reallocates every render target, so it is rare and requires real headroom.
 const Q_DOWN_MS = 27, Q_UP_MS = 13.5;
@@ -882,6 +887,10 @@ function setIntroCheap(on, wantBokeh) {
   if (bokehPass) bokehPass.enabled = on ? !!wantBokeh : QUALITY[qTier].bokeh;
 }
 
+// The starting tier has to actually be applied; setting the variable alone
+// left a phone rendering at desktop quality until the ladder noticed.
+if (!NO_POST && qTier !== 0) applyQuality(qTier);
+
 let frameEMA = 16.7;               // ms, exponential moving average
 const FINE_POINTER = matchMedia('(pointer: fine)').matches;
 if (FINE_POINTER) {
@@ -924,7 +933,10 @@ if (FINE_POINTER) {
 // each child's rect without any 3D involved.
 const _ray = new THREE.Raycaster();
 const _ndc = new THREE.Vector2();
-const HIT_SLOP = 12;          // element px of forgiveness; links are thin
+// Coarse pointers get a much larger target. WCAG asks for 24x24 CSS px and the
+// native guidance for 44; a fingertip on a projected panel has neither the
+// precision nor the visual feedback a mouse does.
+const HIT_SLOP = matchMedia('(pointer: coarse)').matches ? 46 : 12;
 const HIT_SEL = 'a[href],button,textarea,input,.pos-row';
 
 function hittablePanels() {

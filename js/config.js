@@ -46,6 +46,31 @@ export const CARRIER = {
   note:   carrier({ room: 'note',    el: [1000, 700], w: 0.34, pos: [0, 0.7915, 26.74], elev: 70 * D, fitH: 0.62, fitW: 0.80 })
 };
 
+// ── portrait variants ─────────────────────────────────────────
+// A 1.6-aspect panel on a 0.46-aspect phone can occupy at most 29% of the
+// screen height however the fit fractions are set — that is geometry, not
+// tuning, and it rendered 15px panel copy at about 4 effective pixels. The
+// panels therefore become portrait on portrait screens: taller element, same
+// physical width, and the CSS reflows each to a single column to match.
+//
+// Chosen ONCE at startup from the initial aspect, because the paper props
+// behind each panel are built from these dimensions. Rotating a phone
+// mid-visit leaves the prop at the old aspect; the panel itself still frames
+// correctly, which is the part that carries the content.
+export const CARRIER_PORTRAIT = {
+  sheet:  carrier({ room: 'office',  el: [760, 1180], w: 0.42, pos: [0, 0.8137, 4.26], elev: 72 * D, fitH: 0.80, fitW: 0.90 }),
+  board:  carrier({ room: 'trading', el: [820, 1160], w: 1.85, pos: [0, 1.7500, 15.83], elev: 0 * D, fitH: 0.78, fitW: 0.90 }),
+  spread: carrier({ room: 'study',   el: [780, 1140], w: 0.38, pos: [0, 1.0010, 20.15], elev: 33.7 * D, fitH: 0.78, fitW: 0.90 }),
+  card:   carrier({ room: 'rooftop', el: [800, 1120], w: 0.36, pos: [0, 0.8673, 27.10], elev: 12 * D, fitH: 0.74, fitW: 0.90 }),
+  note:   carrier({ room: 'note',    el: [760, 1060], w: 0.30, pos: [0, 0.7915, 26.74], elev: 70 * D, fitH: 0.72, fitW: 0.90 })
+};
+
+// Portrait below 1:1. Tablets in landscape keep the wide panels.
+export const IS_PORTRAIT = (aspect) => aspect < 1.0;
+export function carriersFor(aspect) {
+  return IS_PORTRAIT(aspect) ? CARRIER_PORTRAIT : CARRIER;
+}
+
 export const STOP_OF = { office: 'sheet', trading: 'board', study: 'spread', rooftop: 'card', note: 'note' };
 
 // ── The résumé desk ────────────────────────────────────────────

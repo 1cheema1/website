@@ -186,11 +186,14 @@ export function buildWorld(scene, market = null) {
     const ped = sc(B(0.72, 0.85, 0.72, M.marble)); at(ped, 0, 0.425, 0.05); G.add(ped);
     const cap = sc(B(0.80, 0.04, 0.80, bronze)); at(cap, 0, 0.870, 0.05); G.add(cap);
     const base = sc(B(0.92, 0.06, 0.92, M.darkSteel)); at(base, 0, 0.030, 0.05); G.add(base);
-    const plaque = sc(B(0.52, 0.155, 0.014, M.brass)); at(plaque, 0, 0.585, -0.32); G.add(plaque);
-    const plaqueFace = new THREE.Mesh(new THREE.PlaneGeometry(0.495, 0.138), new THREE.MeshStandardMaterial({
-      map: TEX.plaqueTexture('FIRST DEPOSIT', 'SEPT · 2022'), transparent: true, roughness: 0.4, metalness: 0.7, envMapIntensity: 1.0, side: THREE.DoubleSide
+    // Raised from y=0.585. The intro stop sees roughly y 0.49-2.27, so the plaque
+// sat right on the bottom edge and was cut — and it is the only thing on screen
+// that explains WHY the bank breaks. The premise was built and not visible.
+const plaque = sc(B(0.56, 0.17, 0.014, M.brass)); at(plaque, 0, 0.745, -0.32); G.add(plaque);
+    const plaqueFace = new THREE.Mesh(new THREE.PlaneGeometry(0.535, 0.152), new THREE.MeshStandardMaterial({
+      map: TEX.plaqueTexture('FIRST DEPOSIT', 'SEPT 2022 — AND EVERY ONE SINCE'), transparent: true, roughness: 0.4, metalness: 0.7, envMapIntensity: 1.0, side: THREE.DoubleSide
     }));
-    at(plaqueFace, 0, 0.585, -0.330, 0, Math.PI, 0); G.add(plaqueFace);
+    at(plaqueFace, 0, 0.745, -0.330, 0, Math.PI, 0); G.add(plaqueFace);
     // The plaque had its own spotlight. One more scene-wide light for a 0.5m
     // plate is a bad trade — every light is evaluated by every fragment of
     // every lit material, wherever it is — so it lights itself instead. Reads
