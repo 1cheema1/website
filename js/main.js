@@ -67,13 +67,14 @@ if (new URLSearchParams(location.search).get('debug') === '1') {
 // from before it existed — these look identical from the outside. BUILD is
 // bumped on every deploy that changes behaviour, so if the number here is not
 // the current one, the page is stale and nothing else it says can be trusted.
-const BUILD = '2026-08-16-stacking-9';
+const BUILD = '2026-08-16-flatten-11';
 if (new URLSearchParams(location.search).get('diag') === '1') {
   // Attach immediately if the body already exists, and via the event if not.
   // main.js is a module with top-level await, so it can resume after
   // DOMContentLoaded has already fired — a listener alone can silently miss.
   const mount = () => {
     const d = document.createElement('div');
+    d.id = 'diagbox';
     d.style.cssText = 'position:fixed;z-index:99999;left:8px;right:8px;top:8px;' +
       'background:rgba(4,4,6,.94);color:#7dffa8;font:12px/1.7 ui-monospace,monospace;' +
       'padding:12px 14px;border:1px solid #2c5c3c;white-space:pre-wrap;pointer-events:none;';
@@ -103,13 +104,36 @@ if (new URLSearchParams(location.search).get('diag') === '1') {
           if (it && !it.obj) {
             const rr = it.el.getBoundingClientRect();
             const pid = it.el.parentElement ? (it.el.parentElement.id || it.el.parentElement.tagName) : '?';
-            const mid = document.elementFromPoint(
-              Math.round(rr.left + rr.width / 2), Math.round(rr.top + rr.height / 2));
-            return 'sheetCard ' + Math.round(rr.width) + ' x ' + Math.round(rr.height) +
-                   ' @ ' + Math.round(rr.left) + ',' + Math.round(rr.top) +
-                   '\nparent   ' + pid + '   (expect BODY)' +
-                   '\nshown    ' + it.el.classList.contains('show') +
-                   '\nontop    ' + (mid ? (mid.tagName + (mid.id ? '#' + mid.id : '')) : 'null');
+            return 'flatCard ' + Math.round(rr.width) + 'x' + Math.round(rr.height) +
+                   ' @' + Math.round(rr.left) + ',' + Math.round(rr.top) + '  parent ' + pid;
+          }
+          // PROJECTED: compare where the hole lands on screen against where the
+          // HTML actually is. These must coincide; whatever the difference is
+          // between them is the bug, stated as numbers instead of inferred from
+          // a photograph.
+          if (it && it.obj && it.hole) {
+            const cam = T.camera, cv = T.renderer.domElement.getBoundingClientRect();
+            const g = it.hole.geometry.attributes.position;
+            const v = new (it.hole.position.constructor)();
+            let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+            it.hole.updateMatrixWorld();
+            for (let i = 0; i < g.count; i++) {
+              v.fromBufferAttribute(g, i);
+              it.hole.localToWorld(v);
+              v.project(cam);
+              const sx = (v.x * 0.5 + 0.5) * cv.width;
+              const sy = (-v.y * 0.5 + 0.5) * cv.height;
+              if (sx < x0) x0 = sx; if (sx > x1) x1 = sx;
+              if (sy < y0) y0 = sy; if (sy > y1) y1 = sy;
+            }
+            const er = it.obj.element.getBoundingClientRect();
+            const R = (n) => Math.round(n);
+            return 'holeRect ' + R(x1 - x0) + 'x' + R(y1 - y0) + ' @' + R(x0) + ',' + R(y0) +
+                   '\nhtmlRect ' + R(er.width) + 'x' + R(er.height) + ' @' + R(er.left) + ',' + R(er.top) +
+                   '\ndelta    dx ' + R(er.left - x0) + '  dy ' + R(er.top - y0) +
+                   '  dw ' + R(er.width - (x1 - x0)) + '  dh ' + R(er.height - (y1 - y0)) +
+                   '\nvis      ' + it.obj.visible + '  parent ' +
+                   (it.obj.element.parentElement ? it.obj.element.parentElement.tagName : '?');
           }
           const r = [];
           r.push('canvas   ' + Math.round(cv.width) + ' x ' + Math.round(cv.height) +
@@ -175,6 +199,14 @@ renderer.domElement.addEventListener('webglcontextrestored', () => {
 document.getElementById('gl').appendChild(renderer.domElement);
 
 const cssRenderer = new CSS3DRenderer();
+// WebKit flattens a preserve-3d subtree when an ancestor has overflow other
+// than visible; Blink does not. CSS3DRenderer sets overflow:hidden on its own
+// root, and #css3d clips too — so on iOS the whole 3D chain collapses and each
+// panel is placed by a flattened 2D projection instead of its matrix3d. That
+// lands it beside its hole-punch, which is the offset panel on the phone.
+// Nothing here needs clipping: body is overflow:hidden and the panels are
+// culled by the p-window anyway.
+cssRenderer.domElement.style.overflow = 'visible';
 cssRenderer.setSize(innerWidth, innerHeight);
 document.getElementById('css3d').appendChild(cssRenderer.domElement);
 

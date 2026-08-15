@@ -31,7 +31,7 @@ body.has-cursor,body.has-cursor *{cursor:none !important;}
    preserve-3d/matrix3d chain, so every link on a panel is unreachable that
    way. main.js raycasts the hole planes instead and maps the hit UV back to
    element coordinates. See panelTargetAt(). */
-#css3d{position:fixed;inset:0;z-index:1;pointer-events:none;}
+#css3d{position:fixed;inset:0;z-index:1;pointer-events:none;overflow:visible;}
 #gl{position:fixed;inset:0;z-index:2;pointer-events:none;}
 
 /* ── custom cursor ── */

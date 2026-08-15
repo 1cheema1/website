@@ -79,7 +79,10 @@ export function buildPanels(scene, cssScene, M, stops, market) {
   // It is also just better here. A 3D-projected panel on a 393px screen was
   // never going to beat a readable card, and the room still renders behind it
   // with the paper prop on the desk where the panel would have been.
-  const FLAT = portrait;
+  // Flat cards are OFF. They worked, but they are not the site — the panel
+  // belongs in the room, on the desk, the way the desktop build shows it.
+  // ?flat=1 brings them back as a fallback while the projection is being fixed.
+  const FLAT = new URLSearchParams(location.search).get('flat') === '1';
   const items = {};
   const holeScene = new THREE.Scene();
 
