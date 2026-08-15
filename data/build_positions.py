@@ -36,6 +36,10 @@ OUT = Path(__file__).resolve().parent / "positions.json"
 
 LOOKBACK_YEARS = 3
 TOP_N = 25
+# The personal allocation shown on The Book. Marked to market by the same job
+# that feeds the trading floor, so the page is true the morning it is read
+# rather than whenever the numbers were typed.
+HOLDINGS = ["XEQT.TO", "CHPS.TO"]
 MOMENTUM_DAYS = 126          # ~6 months
 VOL_DAYS = 63                # ~3 months
 TREND_DAYS = 200             # classic long-term trend filter
@@ -190,6 +194,22 @@ def main() -> int:
             "spark": [round((float(v) - lo) / rng, 4) for v in pts_s],
         })
 
+    print("pricing personal holdings…", flush=True)
+    holdings_payload = {}
+    for sym in HOLDINGS:
+        try:
+            h = download([sym], start)
+            col = h[h.columns[0]].dropna()
+            ytd = col[col.index >= f"{col.index[-1].year}-01-01"]
+            holdings_payload[sym.split(".")[0]] = {
+                "ytd": round(float(col.iloc[-1] / ytd.iloc[0] - 1.0) * 100, 2),
+                "one_year": round(float(col.iloc[-1] / col.iloc[max(0, len(col) - 253)] - 1.0) * 100, 2),
+            }
+        except Exception as exc:                              # noqa: BLE001
+            # A ticker that fails to price is left out rather than shown as
+            # zero; the page renders an em dash for anything missing.
+            print(f"  ! {sym} failed ({exc})", flush=True)
+
     payload = {
         "generated_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "window": {"start": str(equity.index[0].date()), "end": str(equity.index[-1].date())},
@@ -198,6 +218,7 @@ def main() -> int:
         "strategy": strat,
         "benchmark": {"symbol": BENCHMARK, **bench_stats},
         "holdings": holdings[:12],
+        "personal": holdings_payload,
         "sparkline": spark,
         "screens": screens,
         "caveat": (

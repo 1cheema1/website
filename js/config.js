@@ -246,8 +246,8 @@ export const MOOD = [
 export const CHAPTERS = [
   { p: 0.000, name: 'The Vault' },
   { p: 0.390, name: '01 — Experience' },
-  { p: 0.560, name: '02 — Positions' },
-  { p: 0.730, name: '03 — Research' },
+  { p: 0.560, name: '02 — Projects' },
+  { p: 0.730, name: '03 — The Book' },
   { p: 0.900, name: '04 — Contact' }
 ];
 

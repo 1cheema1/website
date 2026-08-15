@@ -105,6 +105,21 @@ try {
 } catch { /* board and screens fall back to baked-in values */ }
 const world = buildWorld(scene, MARKET);
 
+// The Book marks its two ETFs to market from the same nightly file. Anything
+// missing stays an em dash rather than rendering a fabricated number.
+if (MARKET && MARKET.personal) {
+  for (const [sym, el] of [['XEQT', 'xeqtPf'], ['CHPS', 'chpsPf']]) {
+    const d = MARKET.personal[sym], node = document.getElementById(el);
+    if (!d || !node || typeof d.one_year !== 'number') continue;
+    node.textContent = (d.one_year >= 0 ? '+' : '') + d.one_year.toFixed(1) + '%';
+    node.classList.add(d.one_year >= 0 ? 'up' : 'down');
+  }
+  const asOf = document.getElementById('allocAsOf');
+  if (asOf && MARKET.window && MARKET.window.end) {
+    asOf.textContent = `1Y · marked ${MARKET.window.end} · personal holdings · not advice`;
+  }
+}
+
 step(52, 'Forging the vault');
 await paint();
 const intro = buildIntro(scene, world.M, world.glowSprite, world.emis);
@@ -250,7 +265,6 @@ function applyMood(z) {
 // ═══════════════════ hud + header ═══════════════════
 const dots = [...document.querySelectorAll('#chapters i')];
 const chapname = document.getElementById('chapname');
-const cue = document.getElementById('scrollcue');
 const topnav = document.getElementById('topnav');
 const navBtns = [...document.querySelectorAll('#topnav nav button')];
 let lastChapter = -1;
@@ -266,7 +280,6 @@ function updateHud(p) {
     navBtns.forEach(b => b.classList.toggle('on', b.dataset.jump === room));
     if (room) AUDIO.roomArrival(room); else AUDIO.resetRoomTone();
   }
-  cue.classList.toggle('show', introDone && p < 0.34);
 }
 
 // ═══════════════════ camera ═══════════════════
@@ -496,7 +509,7 @@ const QUERY = new URLSearchParams(location.search);
     _ld.style.display = 'none';
   }
   if (q.get('bare') === '1') {
-    for (const id of ['hud', 'chapters', 'scrollcue', 'topnav', 'skipIntro', 'breakBtn', 'cursor']) {
+    for (const id of ['hud', 'chapters', 'topnav', 'skipIntro', 'breakBtn', 'cursor']) {
       const e = document.getElementById(id); if (e) e.style.display = 'none';
     }
   }
@@ -614,27 +627,12 @@ navBtns.forEach(btn => {
     const r = await fetch('data/positions.json', { cache: 'no-cache' });
     if (!r.ok) throw new Error('status ' + r.status);
     const d = await r.json();
-    const st = d.strategy, bm = d.benchmark;
-    const sign = v => (v >= 0 ? '+' : '') + v.toFixed(1) + '%';
-
-    const ret = document.getElementById('roboReturn');
-    if (ret) {
-      ret.textContent = sign(st.total_return);
-      ret.className = 'n ' + (st.total_return >= 0 ? 'up' : 'down');
-    }
+    // The board no longer reports returns — the Source column replaced them, and
+    // performance figures belong to the strategy, not to a list of projects. The
+    // only thing still taken from the nightly file is the freshness stamp, which
+    // is what makes "LIVE" mean something.
     const asOf = document.getElementById('boardAsOf');
-    if (asOf) asOf.textContent = 'Live · as of ' + d.window.end;
-
-    // Sharpe and drawdown are shown next to the return on purpose: this
-    // strategy currently beats SPY on total return but not risk-adjusted,
-    // and a board that hid that would be worth less than one that shows it.
-    const stats = document.getElementById('boardStats');
-    if (stats) stats.textContent =
-      `Sharpe ${st.sharpe.toFixed(2)} · Max DD ${st.max_drawdown.toFixed(1)}%`;
-
-    const bench = document.getElementById('boardBench');
-    if (bench) bench.innerHTML =
-      `${bm.symbol} <b>${sign(bm.total_return)}</b> · Sharpe ${bm.sharpe.toFixed(2)}`;
+    if (asOf && d.window && d.window.end) asOf.textContent = 'Live · as of ' + d.window.end;
   } catch (err) {
     console.warn('positions.json unavailable; board shows baked-in values', err);
   }
@@ -702,12 +700,17 @@ soundBtn.addEventListener('click', () => {
 
 // ═══════════════════ custom cursor ═══════════════════
 const cursorEl = document.getElementById('cursor');
+let ptrX = -100, ptrY = -100, ptrMoved = false, hoverDirty = false;
 const FINE_POINTER = matchMedia('(pointer: fine)').matches;
 if (FINE_POINTER) {
   document.body.classList.add('has-cursor');
   addEventListener('mousemove', (e) => {
-    cursorEl.style.transform = `translate3d(${e.clientX}px, ${e.clientY}px, 0)`;
-  });
+    // Record only. The transform is written once per frame in frame(), so a
+    // burst of coalesced moves during a long frame can never queue up writes,
+    // and the cursor lands wherever the pointer actually is on the next paint
+    // instead of trailing through the backlog.
+    ptrX = e.clientX; ptrY = e.clientY; ptrMoved = true;
+  }, { passive: true });
 } else {
   cursorEl.style.display = 'none';
 }
@@ -789,12 +792,25 @@ const OVERLAY_SEL = '#topnav,#breakBtn,#skipIntro,#loader,#hud,#chapters';
 // has target === window), so never call .closest on it directly.
 const overOverlay = (e) => e.target instanceof Element && !!e.target.closest(OVERLAY_SEL);
 
+// A raycast plus a walk of offsetLeft/offsetTop per candidate is too much to
+// run on every pointer event — mousemove fires far faster than we render. Mark
+// it dirty here and resolve at most once per frame, in frame().
 addEventListener('mousemove', (e) => {
-  // over real DOM chrome: only the actual controls light the cursor
-  if (overOverlay(e)) { setHover(null); cursorEl.classList.toggle('hot', !!e.target.closest('a,button')); return; }
-  const t = panelTargetAt(e.clientX, e.clientY);
-  setHover(t ? t.el : null);
+  if (overOverlay(e)) {
+    setHover(null);
+    cursorEl.classList.toggle('hot', !!e.target.closest('a,button'));
+    hoverDirty = false;
+    return;
+  }
+  hoverDirty = true;
 }, { passive: true });
+
+function updateHover() {
+  if (!hoverDirty) return;
+  hoverDirty = false;
+  const t = panelTargetAt(ptrX, ptrY);
+  setHover(t ? t.el : null);
+}
 
 let dispatching = false;      // el.click() below re-enters this listener otherwise
 addEventListener('click', (e) => {
@@ -865,6 +881,12 @@ function frame(now) {
   if (LOCKED !== null) p = LOCKED;
   // otherwise `p` is owned by whichever tween is live: the autoplay intro
   // before handoff, or the station hop afterwards. Both write it directly.
+
+  if (ptrMoved) {
+    ptrMoved = false;
+    cursorEl.style.transform = `translate3d(${ptrX}px, ${ptrY}px, 0)`;
+  }
+  updateHover();
 
   updateDrift(dt, now);
   sampleCamera(p);
