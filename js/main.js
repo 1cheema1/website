@@ -865,17 +865,21 @@ let prev = performance.now(), firstFrame = true, firstFrameAt = 0, loaderDone = 
 // mobile when the URL bar collapses, and reliably under headless capture —
 // nothing recomputes, because no resize event ever fires. The result is a
 // correctly-drawn scene framed for an aspect the viewer never had: everything
-// uniformly too small, with clear colour under the floor. One re-derive on the
-// first real frame costs nothing and makes the framing depend on the layout
-// that actually shipped rather than the one that happened to exist at import.
-let didSettle = false;
+// uniformly too small, with clear colour under the floor.
+let lastW = innerWidth, lastH = innerHeight;
 
 function frame(now) {
   const dt = Math.min(0.05, (now - prev) / 1000); prev = now;
 
-  if (!didSettle) {
-    didSettle = true;
-    if (Math.abs(camera.aspect - innerWidth / innerHeight) > 1e-6) resize();
+  // The viewport can settle at ANY point after load — a restored tab, a mobile
+  // URL bar collapsing, a headless capture window still being sized. The old
+  // one-shot check on the first frame missed all of those, and the scene stayed
+  // framed for an aspect the viewer never had: everything uniformly too small,
+  // with the canvas covering only part of the page. Comparing against the last
+  // size each frame is two integer compares and self-heals whenever it changes.
+  if (innerWidth !== lastW || innerHeight !== lastH) {
+    lastW = innerWidth; lastH = innerHeight;
+    resize();
   }
 
   if (LOCKED !== null) p = LOCKED;

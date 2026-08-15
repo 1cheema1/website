@@ -90,9 +90,20 @@ export function buildWorld(scene, market = null) {
 
     // deliberately dark, low-reflectance surfaces: this is a black box
     // with one hard light in it, not a lit room.
-    const voidMat = new THREE.MeshStandardMaterial({ color: 0x111216, roughness: 0.88, metalness: 0.06, envMapIntensity: 0.10 });
-    const facadeMat = new THREE.MeshStandardMaterial({ color: 0x15161b, roughness: 0.82, metalness: 0.14, envMapIntensity: 0.14 });
-    const floorMat = M.marble.clone(); floorMat.envMapIntensity = 0.30; floorMat.color = new THREE.Color(0x585450);
+    // These used to be near-black with envMapIntensity 0.10 — the chamber was a
+    // deliberate void, and the result was a vault door floating in nothing with
+    // no sense of room or scale. They are still dark, but they are now stone
+    // that takes light: the uplights below do the actual work of revealing the
+    // architecture, and these have to be able to receive it.
+    const voidMat = new THREE.MeshStandardMaterial({ color: 0x1c1e24, roughness: 0.86, metalness: 0.05, envMapIntensity: 0.26 });
+    const facadeMat = new THREE.MeshStandardMaterial({ color: 0x2a2c34, roughness: 0.74, metalness: 0.12, envMapIntensity: 0.40 });
+    const pilasterMat = new THREE.MeshStandardMaterial({ color: 0x33353f, roughness: 0.66, metalness: 0.14, envMapIntensity: 0.55 });
+    // 24 · a cleaner mirror. At roughness 0.5 the reflection was noise; the
+    // door's gold rim is the only bright thing here and it deserves a reflection
+    // you can read as one.
+    const floorMat = M.marble.clone();
+    floorMat.envMapIntensity = 0.85; floorMat.color = new THREE.Color(0x4a4744);
+    floorMat.roughness = 0.14; floorMat.metalness = 0.42;
 
     const floor = rc(PL(22, R.z1 - R.z0, floorMat));
     at(floor, 0, 0, (R.z0 + R.z1) / 2, -Math.PI / 2); G.add(floor);
@@ -115,13 +126,56 @@ export function buildWorld(scene, market = null) {
 
     // shallow relief pilasters so the facade is not a blank slab
     for (const x of [-3.7, -2.6, 2.6, 3.7]) {
-      G.add(sc(at(B(0.22, 5.4, 0.07, voidMat), x, 2.0, -0.055)));
+      G.add(sc(at(B(0.26, 5.4, 0.10, pilasterMat), x, 2.0, -0.068)));
     }
-    G.add(sc(at(B(18, 0.16, 0.10, voidMat), 0, 4.62, -0.07)));
+    G.add(sc(at(B(18, 0.20, 0.13, pilasterMat), 0, 4.62, -0.085)));
+    G.add(sc(at(B(18, 0.10, 0.16, pilasterMat), 0, 4.46, -0.10)));   // cornice under-rail
 
     // rebate ring around the door
     const ring = sc(new THREE.Mesh(new THREE.TorusGeometry(1.30, 0.075, 12, 64), M.darkSteel));
     at(ring, 0, 1.40, -0.02); G.add(ring);
+
+    // 21 · sleeve lining the hole, so off-axis the opening reads as a hole
+    // through half a metre of wall rather than a circle cut in paper.
+    {
+      const sleeve = new THREE.Mesh(
+        new THREE.CylinderGeometry(1.255, 1.255, 0.50, 64, 1, true),
+        new THREE.MeshStandardMaterial({ color: 0x24262c, roughness: 0.7, metalness: 0.3,
+          side: THREE.BackSide, envMapIntensity: 0.35 }));
+      at(sleeve, 0, 1.40, -0.25, Math.PI / 2); G.add(sleeve);
+    }
+
+    // ── 15b · stone courses around the opening ────────────────────
+    // The architectural detail added out at x=±4 (pilasters, deposit boxes)
+    // never shows in the hero shot: from the wide stop the frame only spans
+    // about ±2.6m of wall, nearly all of it door. So the surround itself has
+    // to carry the detail. Two courses of voussoirs, instanced, catching the
+    // existing key light — relief beats adding more lamps.
+    {
+      const course = (radius, w, h, d, n, mat, jitter) => {
+        const im = new THREE.InstancedMesh(new THREE.BoxGeometry(w, h, d), mat, n);
+        const m = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler();
+        const pos = new THREE.Vector3(), one = new THREE.Vector3(1, 1, 1);
+        for (let i = 0; i < n; i++) {
+          const a = (i / n) * Math.PI * 2;
+          const r = radius + (i % 2 ? jitter : -jitter);
+          pos.set(Math.cos(a) * r, 1.40 + Math.sin(a) * r, -0.10);
+          e.set(0, 0, a); q.setFromEuler(e);
+          m.compose(pos, q, one);
+          im.setMatrixAt(i, m);
+        }
+        im.instanceMatrix.needsUpdate = true;
+        im.castShadow = true; im.receiveShadow = true;
+        return im;
+      };
+      const stoneA = new THREE.MeshStandardMaterial({ color: 0x3a3d47, roughness: 0.72, metalness: 0.10, envMapIntensity: 0.5 });
+      const stoneB = new THREE.MeshStandardMaterial({ color: 0x2e3138, roughness: 0.80, metalness: 0.08, envMapIntensity: 0.38 });
+      G.add(course(1.47, 0.30, 0.175, 0.13, 34, stoneA, 0.008));
+      G.add(course(1.78, 0.34, 0.235, 0.09, 30, stoneB, 0.010));
+      // a plain architrave band tying the two courses together
+      const band = new THREE.Mesh(new THREE.TorusGeometry(1.63, 0.030, 8, 72), M.darkSteel);
+      at(band, 0, 1.40, -0.062); sc(band); G.add(band);
+    }
 
     // pedestal — top face lands at y = 0.890 so the piggy's feet rest on it.
     // Roughness kept high and metalness moderate: at 0.92/0.38 this cap sat
@@ -130,11 +184,17 @@ export function buildWorld(scene, market = null) {
     const ped = sc(B(0.72, 0.85, 0.72, M.marble)); at(ped, 0, 0.425, 0.05); G.add(ped);
     const cap = sc(B(0.80, 0.04, 0.80, bronze)); at(cap, 0, 0.870, 0.05); G.add(cap);
     const base = sc(B(0.92, 0.06, 0.92, M.darkSteel)); at(base, 0, 0.030, 0.05); G.add(base);
-    const plaque = sc(B(0.34, 0.10, 0.012, M.brass)); at(plaque, 0, 0.60, -0.32); G.add(plaque);
-    const plaqueFace = new THREE.Mesh(new THREE.PlaneGeometry(0.32, 0.088), new THREE.MeshStandardMaterial({
+    const plaque = sc(B(0.52, 0.155, 0.014, M.brass)); at(plaque, 0, 0.585, -0.32); G.add(plaque);
+    const plaqueFace = new THREE.Mesh(new THREE.PlaneGeometry(0.495, 0.138), new THREE.MeshStandardMaterial({
       map: TEX.plaqueTexture('FIRST DEPOSIT', 'SEPT · 2022'), transparent: true, roughness: 0.4, metalness: 0.7, envMapIntensity: 1.0, side: THREE.DoubleSide
     }));
-    at(plaqueFace, 0, 0.60, -0.328, 0, Math.PI, 0); G.add(plaqueFace);
+    at(plaqueFace, 0, 0.585, -0.330, 0, Math.PI, 0); G.add(plaqueFace);
+    // and a light on it — the intro's whole premise is written on this plaque
+    {
+      const pq = new THREE.SpotLight(0xffdca8, 5.0, 2.0, 0.7, 0.9, 1.6);
+      pq.position.set(0, 1.15, -0.95); pq.target.position.set(0, 0.585, -0.33);
+      G.add(pq, pq.target);
+    }
 
     // rig — one hard key from above-left, one cool rim from the right
     const key = new THREE.SpotLight(0xffe6c0, 31, 9, 0.54, 0.45, 1.6);
@@ -149,6 +209,79 @@ export function buildWorld(scene, market = null) {
 
     const fill = new THREE.PointLight(0xffc98a, 1.1, 7, 2);
     fill.position.set(0, 1.1, -3.4); G.add(fill);
+
+    // ── 15 · uplights: the change that makes this a room ──────────
+    // Grazing light up the face of the wall. Shadowless and cheap, but it is
+    // what turns four flat pilaster slabs into architecture — you read the
+    // relief because the light rakes across it rather than facing it.
+    for (const x of [-5.4, -3.15, 3.15, 5.4]) {
+      const up = new THREE.SpotLight(0x9fb4d8, 34, 9.5, 0.52, 0.80, 1.35);
+      up.position.set(x, 0.06, -0.72);
+      up.target.position.set(x, 5.0, -0.06);
+      G.add(up, up.target);
+      // a visible fitting, so the light has a source in frame
+      G.add(sc(at(CY(0.055, 0.070, 0.045, M.darkSteel, 12), x, 0.022, -0.72)));
+    }
+
+    // ── 16 · dust in the air ───────────────────────────────────────
+    // Cone-geometry light shafts were tried here and cut: additively blended
+    // gradient cones read as vertical smudges rather than beams from anything
+    // but an edge-on angle. The motes alone carry the volume, and the uplights
+    // above give it shape.
+    {
+      // motes drifting in the shafts — 220 points, one draw call
+      const N = 220, pos = new Float32Array(N * 3), seed = [];
+      for (let i = 0; i < N; i++) {
+        const x = -7 + Math.random() * 14, y = Math.random() * 5.4, z = -6.5 + Math.random() * 6.2;
+        pos.set([x, y, z], i * 3);
+        seed.push({ y0: y, sp: 0.020 + Math.random() * 0.055, ph: Math.random() * 6.28 });
+      }
+      const dg = new THREE.BufferGeometry();
+      dg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      const dust = new THREE.Points(dg, new THREE.PointsMaterial({
+        color: 0xd8c79a, size: 0.020, transparent: true, opacity: 0.5,
+        blending: THREE.AdditiveBlending, depthWrite: false, sizeAttenuation: true, fog: false
+      }));
+      G.add(dust);
+
+      // 22 · idle life. Motes fall slowly and wrap; the shafts breathe.
+      let tAcc = 0;
+      anim.push({ update(_p, dt) {
+        tAcc += dt;
+        const a = dg.getAttribute('position');
+        for (let i = 0; i < N; i++) {
+          const sd = seed[i];
+          let y = a.getY(i) - sd.sp * dt;
+          if (y < 0.05) y = 5.4;
+          a.setY(i, y);
+          a.setX(i, a.getX(i) + Math.sin(tAcc * 0.35 + sd.ph) * dt * 0.011);
+        }
+        a.needsUpdate = true;
+      } });
+    }
+
+    // ── 20 · safe-deposit boxes in the outer bays ──────────────────
+    // Instanced: 2 bays x 40 doors is one draw call. Vault vocabulary at
+    // almost no cost, and it gives the uplights something to rake across.
+    {
+      const bw = 0.30, bh = 0.19, cols = 4, rows = 10;
+      const box = new THREE.InstancedMesh(
+        new THREE.BoxGeometry(bw - 0.012, bh - 0.012, 0.030),
+        new THREE.MeshStandardMaterial({ color: 0x6b5a33, roughness: 0.44, metalness: 0.82, envMapIntensity: 0.7 }),
+        cols * rows * 2);
+      const m = new THREE.Matrix4();
+      let i = 0;
+      for (const side of [-1, 1]) {
+        const x0 = side * 4.35;
+        for (let c = 0; c < cols; c++) for (let r = 0; r < rows; r++) {
+          m.makeTranslation(x0 + side * c * bw, 0.42 + r * bh, -0.075);
+          box.setMatrixAt(i++, m);
+        }
+      }
+      box.instanceMatrix.needsUpdate = true;
+      box.castShadow = false; box.receiveShadow = true;
+      G.add(box);
+    }
 
     // Picture light over the mounted portrait, and a soft wash on the sign
     // above the door. Without these the flank panels read as two rectangles
