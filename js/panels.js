@@ -79,10 +79,16 @@ export function buildPanels(scene, cssScene, M, stops, market) {
   // It is also just better here. A 3D-projected panel on a 393px screen was
   // never going to beat a readable card, and the room still renders behind it
   // with the paper prop on the desk where the panel would have been.
-  // Flat cards are OFF. They worked, but they are not the site — the panel
-  // belongs in the room, on the desk, the way the desktop build shows it.
-  // ?flat=1 brings them back as a fallback while the projection is being fixed.
-  const FLAT = new URLSearchParams(location.search).get('flat') === '1';
+  // Portrait uses flat cards by default. This is not the design anyone wants —
+  // the panel belongs on the desk, projected, the way desktop shows it — it is
+  // what works. The CSS3D projection is displaced on iOS by roughly +147px,
+  // +79px with the panel and its hole-punch the same size, and I have not been
+  // able to fix it: every attempt measures exactly correct in Chrome, which
+  // does not reproduce the bug, and I have no WebKit to test against.
+  //
+  // ?proj=1 forces the projected panels on a phone, for whoever picks this up
+  // with a real iOS debugger attached.
+  const FLAT = portrait && new URLSearchParams(location.search).get('proj') !== '1';
   const items = {};
   const holeScene = new THREE.Scene();
 
