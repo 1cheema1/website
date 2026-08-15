@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from '../lib/BufferGeometryUtils.js';
-import { ROOM, DOORS } from './config.js';
+import { ROOM, DOORS, RESUME, RESUME_TABLE } from './config.js';
 import * as TEX from './textures.js';
 
 // ── helpers ────────────────────────────────────────────────────
@@ -694,6 +694,57 @@ export function buildWorld(scene, market = null) {
         rooftop.add(sc(at(B(0.009, 0.24, 0.009, M.brass), s * 0.235, by + 0.135, bz + 0.100, -0.60)));
       }
       rooftop.add(sc(at(B(0.50, 0.009, 0.009, M.brass), 0, by + 0.245, bz + 0.148, A)));
+    }
+
+    // ── the résumé desk ──────────────────────────────────────────
+    // A second table further along the roof, reached by clicking RÉSUMÉ on the
+    // contact card. A proper writing desk rather than a bistro table, so the
+    // two stops don't read as the same place twice.
+    {
+      const RT = RESUME_TABLE;
+      const g = new THREE.Group(); at(g, RT.x, 0, RT.z); rooftop.add(g);
+      g.add(sc(at(B(1.30, 0.045, 0.78, M.walnut), 0, RT.top - 0.022, 0)));
+      g.add(sc(at(B(1.24, 0.020, 0.72, M.leatherOx), 0, RT.top + 0.002, 0)));
+      for (const [lx, lz] of [[-0.58, -0.32], [0.58, -0.32], [-0.58, 0.32], [0.58, 0.32]])
+        g.add(sc(at(B(0.05, RT.top - 0.05, 0.05, M.darkSteel), lx, (RT.top - 0.05) / 2, lz)));
+      // stretcher, so it reads as furniture rather than a floating slab
+      g.add(sc(at(B(1.14, 0.03, 0.03, M.darkSteel), 0, 0.18, -0.32)));
+      g.add(sc(at(B(1.14, 0.03, 0.03, M.darkSteel), 0, 0.18, 0.32)));
+
+      // Stand tilting the sheet up to meet the camera. RESUME's elev is 66 deg
+      // from horizontal-ish, which leaves the page standing 0.327m proud of the
+      // desk: a lip at the low edge stops it sliding, two props hold the high
+      // edge. Both derived from RESUME so they follow if the framing changes.
+      const RE = RESUME;
+      const rise = Math.cos(RE.elev) * RE.h;          // 0.327
+      const half = Math.sin(RE.elev) * RE.h / 2;      // 0.367 fore/aft
+      g.add(sc(at(B(0.68, 0.010, 0.022, M.brass), 0, RT.top + 0.007, -half)));
+      for (const s2 of [-1, 1])
+        g.add(sc(at(B(0.016, rise, 0.016, M.brass), s2 * 0.26, RT.top + rise / 2, half - 0.012)));
+      g.add(sc(at(B(0.60, 0.012, 0.016, M.brass), 0, RT.top + rise - 0.008, half - 0.012)));
+
+      // Desk lamp. Kept small and dim on purpose: at 0.115m the shade filled a
+      // third of the frame from the reading stop, and a 0.95m additive glow
+      // sprite on top of it bloomed into a solid disc over the page.
+      // Pushed to the BACK corner (+z), not the near side. The reading stop
+      // looks down the desk at 66 deg, so anything at -z sits dead centre of
+      // frame: at the near corner the base alone covered a fifth of the shot
+      // and bloomed into a solid disc over the page. At +z it reads as a lamp
+      // at the top edge, which is where a desk lamp belongs anyway.
+      g.add(sc(at(CY(0.050, 0.062, 0.010, M.brass, 20), 0.47, RT.top + 0.009, 0.27)));
+      g.add(sc(at(CY(0.006, 0.006, 0.22, M.brass, 10), 0.47, RT.top + 0.12, 0.27)));
+      g.add(sc(at(CY(0.060, 0.026, 0.062, M.brass, 22), 0.445, RT.top + 0.235, 0.25, 0, 0, -0.45)));
+      const lamp = new THREE.PointLight(0xffd9a0, 1.1, 1.7, 2);
+      lamp.position.set(RT.x + 0.42, RT.top + 0.20, RT.z + 0.24);
+      rooftop.add(lamp);
+      rooftop.add(at(glowSprite(0xffcf94, 0.14, 0.16), RT.x + 0.443, RT.top + 0.229, RT.z + 0.25));
+
+      // a chair pulled up to it
+      const CH = new THREE.Group(); at(CH, RT.x, 0, RT.z + 0.78, 0, Math.PI); rooftop.add(CH);
+      CH.add(sc(at(B(0.44, 0.035, 0.44, M.darkSteel), 0, 0.44, 0)));
+      CH.add(sc(at(B(0.42, 0.48, 0.035, M.darkSteel), 0, 0.70, -0.20, 0.14)));
+      for (const [ax, az] of [[-0.18, -0.18], [0.18, -0.18], [-0.18, 0.18], [0.18, 0.18]])
+        CH.add(sc(at(CY(0.014, 0.014, 0.44, M.darkSteel, 8), ax, 0.22, az)));
     }
 
     // chairs

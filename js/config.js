@@ -48,6 +48,20 @@ export const CARRIER = {
 
 export const STOP_OF = { office: 'sheet', trading: 'board', study: 'spread', rooftop: 'card', note: 'note' };
 
+// ── The résumé desk ────────────────────────────────────────────
+// Reached by clicking RÉSUMÉ on the contact card, not by travelling the
+// timeline. It is a genuine place — a second table further along the rooftop
+// with the résumé lying on it — but it sits OFF the p-track, because the
+// timeline ends at 1.0 and renormalising every constant to append a stop
+// would put the whole tour at risk for one detail view. main.js flies to
+// RESUME_STOP and back on its own tween; see openResume().
+export const RESUME = carrier({
+  // y puts the sheet's LOW edge exactly on the desk top (0.742): at elev 66
+  // the page stands 0.327m tall, so its centre has to sit half that above.
+  el: [1080, 1400], w: 0.62, pos: [0, 0.9054, 30.30], elev: 66 * D, fitH: 0.95, fitW: 0.92
+});
+export const RESUME_TABLE = { x: 0, z: 30.30, top: 0.74 };
+
 // Photo + sign flanking the open vault at the 'wide' stop. Both are flat
 // wall panels mounted on the antechamber facade, whose front face sits at
 // world z=0 (camera looks toward +z from z=-4.4). z must be NEGATIVE —

@@ -223,3 +223,58 @@
    and the loop point is invisible */
 @keyframes crawl{from{transform:translateX(0);}to{transform:translateX(-50%);}}
 @media (prefers-reduced-motion:reduce){.tkr-run{animation:none;}}
+
+/* ═══ 4c · THE RÉSUMÉ ═══════════════════════════════════════════
+   A printed page on a desk. Set in the serif/mono pair the rest of the
+   site uses rather than a LaTeX clone, so it belongs to this place — but
+   laid out with a real résumé's density and hierarchy. 1080x1400. */
+#resume{width:1080px;height:1400px;background:var(--paper);color:var(--ink);
+  padding:56px 70px 0;box-sizing:border-box;overflow:hidden;
+  box-shadow:0 40px 90px rgba(0,0,0,.55);}
+#resume .grain{position:absolute;inset:0;pointer-events:none;opacity:.42;
+  background-image:radial-gradient(rgba(120,100,60,.10) 1px,transparent 1px);
+  background-size:3px 3px;}
+#resume .rhead{border-bottom:2px solid var(--ink);padding-bottom:13px;margin-bottom:17px;}
+#resume h1{font-family:var(--serif);font-size:46px;letter-spacing:.005em;line-height:1;margin:0;}
+#resume .rcontact{font-family:var(--mono);font-size:15px;color:var(--muted);margin-top:11px;letter-spacing:.02em;}
+
+#resume .rsec{font-family:var(--mono);font-size:14px;letter-spacing:.26em;text-transform:uppercase;
+  color:var(--gold);border-bottom:1px solid rgba(154,123,46,.42);
+  padding-bottom:5px;margin:19px 0 10px;}
+#resume .rsec:first-of-type{margin-top:0;}
+
+#resume .rrow{display:flex;justify-content:space-between;align-items:baseline;gap:24px;margin-top:11px;}
+#resume .rrow > div:first-child{font-family:var(--serif);font-size:20px;line-height:1.25;}
+#resume .rrow b{font-weight:600;}
+#resume .rwhen{font-family:var(--mono);font-size:13.5px;color:var(--muted);
+  white-space:nowrap;letter-spacing:.02em;}
+#resume .rnote{font-family:var(--mono);font-size:13px;color:var(--muted);margin-top:6px;line-height:1.45;}
+
+#resume ul{margin:7px 0 0;padding-left:19px;list-style:none;}
+#resume li{position:relative;font-size:14.6px;line-height:1.44;margin-bottom:4px;color:#2c2924;}
+#resume li::before{content:'';position:absolute;left:-15px;top:9px;width:5px;height:5px;
+  background:var(--gold);opacity:.75;}
+
+#resume .rskill{font-size:14.4px;line-height:1.45;margin-bottom:3px;}
+#resume .rskill span{display:inline-block;min-width:118px;font-family:var(--mono);font-size:12.5px;
+  letter-spacing:.18em;text-transform:uppercase;color:var(--gold);}
+
+/* Pinned to the page foot. The anchor is a real <a download> — the click
+   arrives via main.js's raycast dispatch, which calls .click() on it, so the
+   browser's own download path runs exactly as if the user hit it directly. */
+#resume .rfoot{position:absolute;left:70px;right:70px;bottom:38px;
+  display:flex;align-items:center;gap:18px;
+  border-top:1px solid rgba(154,123,46,.42);padding-top:22px;}
+#resume .rfoot a{flex:1;text-align:center;font-family:var(--mono);font-size:17px;
+  letter-spacing:.24em;text-transform:uppercase;text-decoration:none;
+  background:var(--ink);color:var(--paper);padding:17px 26px;
+  transition:background .2s ease;}
+#resume .rfoot a.hov{background:var(--gold);}
+#resume .rfoot button{font-family:var(--mono);font-size:13px;letter-spacing:.2em;
+  text-transform:uppercase;background:none;border:1px solid rgba(60,55,45,.4);
+  color:var(--muted);padding:17px 22px;cursor:pointer;transition:border-color .2s ease,color .2s ease;}
+#resume .rfoot button.hov{border-color:var(--gold);color:var(--gold);}
+
+/* Hover states, driven by main.js adding .hov — CSS :hover never fires on a
+   CSS3D panel because the pointer never actually reaches these elements. */
+#card .row .v a.hov{color:var(--gold);border-bottom-color:var(--gold);}

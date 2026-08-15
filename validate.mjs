@@ -334,6 +334,55 @@ console.log('\n── 9. panel windows do not overlap ──');
   else ok(`FLANK closes ${C.FLANK_WINDOW[3]} before first panel opens ${firstOpen}`);
 }
 
+console.log('\n── 9c. the résumé desk ──');
+{
+  const R = C.RESUME, RT = C.RESUME_TABLE;
+  const deskTop = RT.top + 0.002;
+  const halfV = Math.cos(R.elev) * R.h / 2;      // vertical half-extent
+  const halfZ = Math.sin(R.elev) * R.h / 2;      // fore/aft half-extent
+  const botY = R.pos[1] - halfV, botZ = R.pos[2] - halfZ;
+  const topY = R.pos[1] + halfV, topZ = R.pos[2] + halfZ;
+
+  if (Math.abs(botY - deskTop) > 0.006)
+    bad(`résumé low edge y ${botY.toFixed(4)} does not rest on the desk top ${deskTop.toFixed(4)}`);
+  else ok(`résumé low edge rests on the desk (y ${botY.toFixed(3)}), high edge at y ${topY.toFixed(3)}`);
+
+  // the page and its stand must sit on the desk, not overhang it
+  const halfDepth = 0.78 / 2, halfWidth = 1.30 / 2;
+  if (Math.abs(botZ - RT.z) > halfDepth || Math.abs(topZ - RT.z) > halfDepth)
+    bad(`résumé overhangs the desk in z: spans ${botZ.toFixed(3)}..${topZ.toFixed(3)}, desk ${(RT.z-halfDepth).toFixed(3)}..${(RT.z+halfDepth).toFixed(3)}`);
+  else ok(`résumé sits within the desk depth (${botZ.toFixed(3)}..${topZ.toFixed(3)})`);
+  if (R.w / 2 > halfWidth - 0.04) bad(`résumé (w ${R.w}) too wide for the ${1.30}m desk`);
+  else ok(`résumé width ${R.w}m clears the desk edges`);
+
+  for (const [a, label] of ASPECTS) {
+    const d = C.fitDistance(R, a);
+    const pos = [R.pos[0], R.pos[1] + Math.sin(R.elev) * d, R.pos[2] - Math.cos(R.elev) * d];
+    const where = inside(pos);
+    if (where !== 'rooftop') bad(`${label}: résumé camera stop [${pos.map(v=>v.toFixed(2))}] is not on the rooftop (${where})`);
+    else ok(`${label}: résumé stop [${pos.map(v=>v.toFixed(2)).join(', ')}] on the rooftop, d=${d.toFixed(3)}`);
+
+    // the page must actually fit the frame at this aspect
+    const t = Math.tan((C.FOV * Math.PI / 180) / 2);
+    const fracH = R.h / (2 * t * d), fracW = R.w / (2 * t * a * d);
+    if (fracH > 0.999 || fracW > 0.999) bad(`${label}: résumé overflows frame (h ${fracH.toFixed(3)} w ${fracW.toFixed(3)})`);
+  }
+
+  // the excursion is a straight lerp from the card stop — check it stays inside
+  const cardD = C.fitDistance(C.CARRIER.card, 1.7778);
+  const cc = C.CARRIER.card;
+  const from = [cc.pos[0], cc.pos[1] + Math.sin(cc.elev) * cardD, cc.pos[2] - Math.cos(cc.elev) * cardD];
+  const rd = C.fitDistance(R, 1.7778);
+  const to = [R.pos[0], R.pos[1] + Math.sin(R.elev) * rd, R.pos[2] - Math.cos(R.elev) * rd];
+  let clear = true;
+  for (let i = 0; i <= 40; i++) {
+    const t = i / 40;
+    const q = [0, 1, 2].map(k => from[k] + (to[k] - from[k]) * t);
+    if (!inside(q)) { bad(`résumé flight leaves the building at t=${t.toFixed(2)} [${q.map(v=>v.toFixed(2))}]`); clear = false; break; }
+  }
+  if (clear) ok('résumé flight path stays on the rooftop end to end');
+}
+
 console.log('\n── 7. autoplay pacing table ──');
 {
   let acc = 0, p0 = 0, brokenChain = false;

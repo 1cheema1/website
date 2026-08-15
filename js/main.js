@@ -188,6 +188,15 @@ function computeStops() {
     stops[key] = { pos: tgt.clone().addScaledVector(dir, d), tgt };
     stops[c.room] = stops[key];
   }
+  // The résumé desk, framed by the same rule even though it is off the
+  // p-track — so it reframes correctly on resize like everything else.
+  {
+    const c = C.RESUME;
+    const d = C.fitDistance(c, aspect);
+    const tgt = new THREE.Vector3().fromArray(c.pos);
+    const dir = new THREE.Vector3(0, Math.sin(c.elev), -Math.cos(c.elev));
+    stops.resume = { pos: tgt.clone().addScaledVector(dir, d), tgt };
+  }
 }
 computeStops();
 
@@ -412,11 +421,67 @@ function updateDrift(dt, now) {
   );
 }
 
+// ═══════════════════ the résumé desk ═══════════════════
+// An excursion off the timeline: p is frozen, and the camera lerps from
+// whatever the timeline says to the résumé stop. Keeping p frozen (rather than
+// extending the timeline past 1.0) means none of the tour's ~40 p-constants
+// have to be renormalised for one detail view.
+let resumeT = 0;
+let resumeTween = null;
+
+function openResume() {
+  if (resumeT === 1 && !resumeTween) return;
+  if (travel) { travel.kill(); travel = null; }
+  pending = 0; keys.clear();
+  navLocked = true;
+  resumeTween?.kill();
+  const s = { v: resumeT };
+  resumeTween = gsap.to(s, {
+    v: 1, duration: 2.2, ease: 'power2.inOut',
+    onUpdate() { resumeT = s.v; },
+    onComplete() { resumeTween = null; }
+  });
+}
+
+function closeResume() {
+  if (resumeT === 0 && !resumeTween) return;
+  setHover(null);
+  resumeTween?.kill();
+  const s = { v: resumeT };
+  resumeTween = gsap.to(s, {
+    v: 0, duration: 1.8, ease: 'power2.inOut',
+    onUpdate() { resumeT = s.v; },
+    onComplete() { resumeTween = null; navLocked = false; }
+  });
+}
+
+addEventListener('keydown', (e) => {
+  if (resumeT > 0 && (e.key === 'Escape' || e.key.toLowerCase() === 's')) {
+    closeResume(); e.preventDefault();
+  }
+});
+
+// Deep link: /#resume skips the tour and opens the résumé desk, so the URL can
+// be handed to a recruiter directly. Also how the headless checks reach it.
+function jumpToResume() {
+  const last = C.STATIONS.length - 1;
+  p = C.STATIONS[last];
+  stationIdx = last;
+  if (travel) { travel.kill(); travel = null; }
+  introDone = true;
+  resumeT = 1;
+  navLocked = true;
+}
+addEventListener('hashchange', () => {
+  if (location.hash === '#resume') openResume(); else closeResume();
+});
+
 // LOCKED (?p=X) freezes the timeline for headless capture — no input,
 // no autoplay, just a single reproducible frame.
 let LOCKED = null;
+const QUERY = new URLSearchParams(location.search);
 {
-  const q = new URLSearchParams(location.search);
+  const q = QUERY;
   if (q.has('p')) {
     LOCKED = clamp01(parseFloat(q.get('p')));
     p = LOCKED;
@@ -462,10 +527,13 @@ function handoff() {
   skipBtn.classList.add('hide');
 }
 
-if (LOCKED !== null) {
+const WANT_RESUME = location.hash === '#resume' || QUERY.get('resume') === '1';
+
+if (LOCKED !== null || WANT_RESUME) {
   skipBtn.style.display = 'none';
   breakBtn.style.display = 'none';
   topnav.classList.add('show');
+  if (WANT_RESUME) { handoff(); jumpToResume(); }
 } else if (REDUCED_MOTION) {
   p = C.INTRO_END;
   skipBtn.style.display = 'none';
@@ -634,17 +702,132 @@ soundBtn.addEventListener('click', () => {
 
 // ═══════════════════ custom cursor ═══════════════════
 const cursorEl = document.getElementById('cursor');
-if (matchMedia('(pointer: fine)').matches) {
+const FINE_POINTER = matchMedia('(pointer: fine)').matches;
+if (FINE_POINTER) {
   document.body.classList.add('has-cursor');
   addEventListener('mousemove', (e) => {
     cursorEl.style.transform = `translate3d(${e.clientX}px, ${e.clientY}px, 0)`;
   });
-  document.addEventListener('mouseover', (e) => {
-    cursorEl.classList.toggle('hot', !!e.target.closest('a,button,.pos-row,[data-hover]'));
-  });
 } else {
   cursorEl.style.display = 'none';
 }
+
+// ═══════════════════ panel interaction ═══════════════════
+// Nothing on a CSS3D panel can be clicked the ordinary way. CSS3DRenderer nests
+// every panel under a preserve-3d wrapper carrying a matrix3d, and Chrome will
+// not hit-test into that subtree — elementFromPoint() over a card link returns
+// the wrapper, never the link. So the panels' own pointer-events are irrelevant
+// and both DOM layers stay pointer-events:none.
+//
+// Instead we reuse the geometry that is already exact: each panel has a
+// hole-punch plane sitting in precisely the place the HTML is drawn. Raycast
+// those, take the hit UV, and map it back into element pixels — the panel's
+// layout is plain 2D CSS inside a fixed-size box, so offsetLeft/offsetTop give
+// each child's rect without any 3D involved.
+const _ray = new THREE.Raycaster();
+const _ndc = new THREE.Vector2();
+const HIT_SLOP = 12;          // element px of forgiveness; links are thin
+const HIT_SEL = 'a[href],button,textarea,input,.pos-row';
+
+function hittablePanels() {
+  const out = [];
+  if (panels.resume.obj.visible) out.push(panels.resume);
+  for (const k of Object.keys(panels.items)) {
+    if (panels.items[k].obj.visible) out.push(panels.items[k]);
+  }
+  return out;
+}
+
+// Which child of `root` covers the point (lx, ly), in the element's own px?
+// Walks offsetParent rather than getBoundingClientRect: rects are meaningless
+// inside preserve-3d, offsets are pure layout and stay correct.
+function childAt(root, lx, ly) {
+  let found = null;
+  for (const t of root.querySelectorAll(HIT_SEL)) {
+    if (t.offsetParent === null && t !== root) continue;   // display:none
+    let x = 0, y = 0, n = t;
+    while (n && n !== root) { x += n.offsetLeft; y += n.offsetTop; n = n.offsetParent; }
+    if (lx >= x - HIT_SLOP && lx <= x + t.offsetWidth + HIT_SLOP &&
+        ly >= y - HIT_SLOP && ly <= y + t.offsetHeight + HIT_SLOP) found = t;   // last = topmost
+  }
+  return found;
+}
+
+function panelTargetAt(cx, cy) {
+  const list = hittablePanels();
+  if (!list.length) return null;
+  _ndc.set((cx / innerWidth) * 2 - 1, -(cy / innerHeight) * 2 + 1);
+  _ray.setFromCamera(_ndc, camera);
+  const hits = _ray.intersectObjects(list.map(i => i.hole), false);
+  if (!hits.length || !hits[0].uv) return null;
+  const item = list.find(i => i.hole === hits[0].object);
+  if (!item) return null;
+  // PlaneGeometry uv (0,0) is the bottom-left of the plane; CSS3DRenderer flips
+  // Y when it builds the object matrix, so the element's top is uv.y = 1.
+  const lx = hits[0].uv.x * item.c.el[0];
+  const ly = (1 - hits[0].uv.y) * item.c.el[1];
+  const el = childAt(item.obj.element, lx, ly);
+  return el ? { item, el } : null;
+}
+
+// :hover never fires on these elements either, for the same reason — so hover
+// state is a .hov class we apply ourselves.
+let hovEl = null;
+function setHover(el) {
+  if (hovEl === el) return;
+  if (hovEl) hovEl.classList.remove('hov');
+  hovEl = el;
+  if (hovEl) hovEl.classList.add('hov');
+  cursorEl.classList.toggle('hot', !!hovEl);
+  document.body.style.cursor = hovEl && !FINE_POINTER ? 'pointer' : '';
+}
+
+// Real DOM chrome that sits above the canvas and handles its own clicks.
+const OVERLAY_SEL = '#topnav,#breakBtn,#skipIntro,#loader,#hud,#chapters';
+
+// e.target is not always an Element (a synthetic event dispatched on window
+// has target === window), so never call .closest on it directly.
+const overOverlay = (e) => e.target instanceof Element && !!e.target.closest(OVERLAY_SEL);
+
+addEventListener('mousemove', (e) => {
+  // over real DOM chrome: only the actual controls light the cursor
+  if (overOverlay(e)) { setHover(null); cursorEl.classList.toggle('hot', !!e.target.closest('a,button')); return; }
+  const t = panelTargetAt(e.clientX, e.clientY);
+  setHover(t ? t.el : null);
+}, { passive: true });
+
+let dispatching = false;      // el.click() below re-enters this listener otherwise
+addEventListener('click', (e) => {
+  if (dispatching || overOverlay(e)) return;
+  const t = panelTargetAt(e.clientX, e.clientY);
+  if (!t) return;
+  e.preventDefault();
+  dispatching = true;
+  try { activate(t.el); } finally { dispatching = false; }
+});
+
+// Exposed under ?debug=1 so the headless checks can assert that a screen
+// coordinate really does resolve to the link under it — this whole path
+// replaces DOM hit-testing, so nothing else can verify it.
+if (DEBUG) window.__panelHit = panelTargetAt;
+
+function activate(el) {
+  if (el.id === 'resumeBack') return closeResume();
+  if (el.dataset.act === 'resume') return openResume();
+
+  if (el.tagName === 'A') {
+    const href = el.getAttribute('href') || '';
+    // #resumeDl is a real <a download>; clicking it programmatically runs the
+    // browser's own download path, which is what the user asked for.
+    if (el.hasAttribute('download')) { el.click(); return; }
+    if (/^(mailto:|tel:)/i.test(href)) { location.href = href; return; }
+    if (href) window.open(href, '_blank', 'noopener');
+    return;
+  }
+  if (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT') { el.focus(); return; }
+  if (el.tagName === 'BUTTON' || el.classList.contains('pos-row')) { el.click(); return; }
+}
+
 
 function resize() {
   camera.aspect = innerWidth / innerHeight;
@@ -685,12 +868,22 @@ function frame(now) {
 
   updateDrift(dt, now);
   sampleCamera(p);
+  // The résumé excursion blends off the timeline pose toward the desk stop.
+  // p is frozen while this runs, so sampleCamera keeps returning the same
+  // contact-card pose and the blend is stable frame to frame.
+  if (resumeT > 0) {
+    cPos.lerp(stops.resume.pos, resumeT);
+    cTgt.lerp(stops.resume.tgt, resumeT);
+  }
   cPos.add(intro.shake).add(drift);
   camera.position.copy(cPos);
   camera.lookAt(cTgt);
 
   intro.update(p);
   for (const a of world.anim) a.update(p, dt);
+  // Fade the page in over the back half of the flight, so it is not a
+  // billboard sailing toward you the whole way.
+  panels.setResume(resumeT <= 0 ? 0 : clamp01((resumeT - 0.45) / 0.4));
   panels.update(p, camera);
   applyMood(camera.position.z);
   updateHud(p);

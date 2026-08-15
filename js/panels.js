@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { CSS3DObject } from '../lib/CSS3DRenderer.js';
-import { CARRIER, FLANK, FLANK_WINDOW, PANEL_WINDOW, SCREEN, SCREEN_WINDOW } from './config.js';
+import { CARRIER, FLANK, FLANK_WINDOW, PANEL_WINDOW, RESUME, SCREEN, SCREEN_WINDOW } from './config.js';
 import { buildScreenElements } from './screens.js';
 
 const clamp01 = v => v < 0 ? 0 : v > 1 ? 1 : v;
@@ -74,6 +74,27 @@ export function buildPanels(scene, cssScene, M, stops, market) {
 
     items[key] = { obj, hole, c };
   }
+
+  // ── the résumé, on the second rooftop desk ───────────────────────
+  // Not in CARRIER because it is not on the p-track: it is shown only while
+  // the camera is parked at the résumé desk, which main.js drives directly.
+  const resume = (() => {
+    const c = RESUME;
+    const el = document.getElementById('resume');
+    const obj = new CSS3DObject(el);
+    obj.position.fromArray(c.pos);
+    const scale = c.w / c.el[0];
+    obj.scale.set(scale, scale, scale);
+    obj.visible = false;
+    cssScene.add(obj);
+
+    const hole = new THREE.Mesh(new THREE.PlaneGeometry(c.w, c.h), holeMaterial());
+    hole.position.fromArray(c.pos);
+    hole.visible = false;
+    holeScene.add(hole);
+
+    return { obj, hole, c };
+  })();
 
   // ── flanking photo + sign at the vault-open reveal ────────────────
   const flank = {};
@@ -191,6 +212,19 @@ export function buildPanels(scene, cssScene, M, stops, market) {
     scene.add(g); backs.push({ g, key: 'note' });
   }
 
+  // 4c · the résumé sheet — a printed page with a second one under it
+  {
+    const c = RESUME;
+    const g = new THREE.Group();
+    const page = new THREE.Mesh(new THREE.BoxGeometry(c.w + 0.010, c.h + 0.010, 0.0016), M.paper);
+    page.position.z = -0.0014; page.castShadow = true; page.receiveShadow = true; g.add(page);
+    const p2 = new THREE.Mesh(new THREE.BoxGeometry(c.w + 0.006, c.h + 0.006, 0.0012), M.paper);
+    p2.position.set(-0.009, -0.007, -0.0032); p2.rotation.z = -0.014;
+    p2.castShadow = true; p2.receiveShadow = true; g.add(p2);
+    g.position.fromArray(c.pos);
+    scene.add(g); backs.push({ g, key: 'resume' });
+  }
+
   // stand-off block behind the sign
   {
     const c = FLANK.sign;
@@ -212,6 +246,12 @@ export function buildPanels(scene, cssScene, M, stops, market) {
       // wins the depth test against its own paper backing
       const n = new THREE.Vector3(0, 0, 1).applyQuaternion(obj.quaternion);
       hole.position.fromArray(items[key].c.pos).addScaledVector(n, 0.0006);
+    }
+    if (stops.resume) {
+      resume.obj.lookAt(stops.resume.pos);
+      resume.hole.quaternion.copy(resume.obj.quaternion);
+      const n = new THREE.Vector3(0, 0, 1).applyQuaternion(resume.obj.quaternion);
+      resume.hole.position.fromArray(resume.c.pos).addScaledVector(n, 0.0006);
     }
     // flank panels face the fixed 'wide' camera stop — computed once,
     // not per room, since they never move.
@@ -243,13 +283,30 @@ export function buildPanels(scene, cssScene, M, stops, market) {
       hole.position.z -= 0.0006;
     }
     for (const b of backs) {
-      const src = items[b.key] || flank[b.key];
+      const src = items[b.key] || flank[b.key] || (b.key === 'resume' ? resume : null);
       if (src) b.g.quaternion.copy(src.obj.quaternion);
     }
   }
 
   // visibility gating uses PANEL_WINDOW from config.js
+  //
+  // `resumeOn` is the résumé-desk excursion. While it is up, every p-track
+  // panel is forced off regardless of where p happens to be parked: the
+  // camera has left the timeline, so a window that still contains p would
+  // otherwise leave the contact card hanging in mid-air behind us.
+  let resumeOn = 0;
+  function setResume(v) { resumeOn = v; }
+
   function update(p, camera) {
+    resume.obj.visible = resumeOn > 0;
+    resume.hole.visible = resumeOn > 0;
+    resume.obj.element.style.opacity = resumeOn > 0 ? String(resumeOn) : '0';
+    if (resumeOn >= 1) {
+      for (const k of Object.keys(items)) { items[k].obj.visible = false; items[k].hole.visible = false; items[k].obj.element.style.opacity = '0'; }
+      for (const k of Object.keys(flank)) { flank[k].obj.visible = false; flank[k].hole.visible = false; }
+      for (const k of Object.keys(screens)) { screens[k].obj.visible = false; screens[k].hole.visible = false; }
+      return;
+    }
     for (const key of Object.keys(items)) {
       const [a, b] = PANEL_WINDOW[key];
       const on = p >= a && p <= b && inFrontOf(camera, items[key].obj.position);
@@ -278,5 +335,5 @@ export function buildPanels(scene, cssScene, M, stops, market) {
     }
   }
 
-  return { items, flank, screens, holeScene, orient, update };
+  return { items, flank, screens, resume, holeScene, orient, update, setResume };
 }

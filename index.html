@@ -22,6 +22,11 @@ canvas{display:block;}
 body.has-cursor,body.has-cursor *{cursor:none !important;}
 
 /* ── stacking: CSS3D underneath, WebGL on top punching holes ── */
+/* Both layers stay pointer-events:none. Panel interaction does NOT go through
+   DOM hit-testing — Chrome will not hit-test inside CSS3DRenderer's
+   preserve-3d/matrix3d chain, so every link on a panel is unreachable that
+   way. main.js raycasts the hole planes instead and maps the hit UV back to
+   element coordinates. See panelTargetAt(). */
 #css3d{position:fixed;inset:0;z-index:1;pointer-events:none;}
 #gl{position:fixed;inset:0;z-index:2;pointer-events:none;}
 
@@ -329,7 +334,8 @@ body.has-cursor,body.has-cursor *{cursor:none !important;}
       <div class="row"><div class="k">Email</div><div class="v"><a href="mailto:uicheema@uwaterloo.ca">uicheema@uwaterloo.ca</a></div></div>
       <div class="row"><div class="k">GitHub</div><div class="v"><a href="https://github.com/1cheema1" target="_blank" rel="noopener">github.com/1cheema1</a></div></div>
       <div class="row"><div class="k">LinkedIn</div><div class="v"><a href="https://www.linkedin.com/in/1cheema1/" target="_blank" rel="noopener">in/1cheema1</a></div></div>
-      <div class="row"><div class="k">Résumé</div><div class="v"><a href="resume.pdf" target="_blank" rel="noopener">Umer_Cheema_Resume.pdf</a></div></div>
+      <!-- data-act sends this one to the résumé desk rather than the raw PDF -->
+      <div class="row"><div class="k">Résumé</div><div class="v"><a href="resume.pdf" data-act="resume">Umer_Cheema_Resume.pdf &rarr;</a></div></div>
     </div>
     <div class="stamp">Available Winter 2027</div>
     <div class="sig"><em>Umer Cheema</em><span>Section 04 / 04</span></div>
@@ -348,6 +354,70 @@ body.has-cursor,body.has-cursor *{cursor:none !important;}
       <button id="noteSend" type="button">Send</button>
     </div>
     <div class="nstatus" id="noteStatus"></div>
+  </div>
+
+  <!-- 4c · THE RÉSUMÉ ON THE DESK -->
+  <!-- Off the p-track: reached by clicking RÉSUMÉ on the contact card, which
+       flies the camera to the second rooftop table. -->
+  <div id="resume" class="p3d">
+    <div class="grain"></div>
+    <div class="rhead">
+      <h1>Umer Cheema</h1>
+      <div class="rcontact">(647) 606-8454 &middot; uicheema@uwaterloo.ca &middot; umercheema.xyz &middot; github.com/1cheema1</div>
+    </div>
+
+    <div class="rsec">Education</div>
+    <div class="rrow">
+      <div><b>University of Waterloo</b> &mdash; BCFM, Honours Computer Science and Financial Management (Co-op)</div>
+      <div class="rwhen">Waterloo, ON</div>
+    </div>
+    <div class="rnote">Financial Markets &middot; Algorithm Design &amp; Data Structures &middot; Financial Reporting &middot; Functional Programming &middot; Linear Algebra &middot; Discrete Math</div>
+
+    <div class="rsec">Experience</div>
+    <div class="rrow"><div><b>Summer Analyst, Treasury &amp; Forex Group</b> &middot; MCB Bank Limited</div><div class="rwhen">Jul&ndash;Sep 2026 &middot; Lahore, PK</div></div>
+    <ul>
+      <li>Shipped a Bloomberg-style AI news terminal for the treasury desk, scraping Pakistan's three largest financial news sources and scoring relevance and sentiment &mdash; replacing a manual routine costing the 30+ person desk ~15 analyst-hours/day.</li>
+      <li>Analyzed the daily FX blotter (NOP, Nostro, forward points, reval rates) across a book carrying $100M+ in live USD exposure.</li>
+      <li>Contributed to daily FX swap point pricing; built working knowledge of options, futures and forward pricing mechanics on a nine-figure desk.</li>
+      <li>Tracked CRR/SLR ratios against regulatory thresholds and analyzed T-bill and PIB auction data and yield movements.</li>
+    </ul>
+
+    <div class="rrow"><div><b>Software Engineer Intern</b> &middot; MCB Bank Limited</div><div class="rwhen">May&ndash;Jul 2026 &middot; Lahore, PK</div></div>
+    <ul>
+      <li>Built the retrieval and reasoning core of MCB Live's AI chatbot &mdash; a custom RAG pipeline (chunking, vector store, retrieval logic) on MiniLM embeddings with Groq for reasoning. Projected to save 200M+ PKR annually and cut support agent load 35%.</li>
+      <li>Designed PII guardrails and a PM-facing dev panel letting non-technical product managers tune prompts, temperature and guardrails without code, plus multi-language support.</li>
+      <li>Ran a 61-case QA suite uncovering critical backend security and architecture gaps the bank adopted for remediation.</li>
+    </ul>
+
+    <div class="rrow"><div><b>Software Engineer Intern</b> &middot; Krownie &middot; AI-Powered Voice Interview Platform</div><div class="rwhen">May&ndash;Aug 2025 &middot; Toronto, ON</div></div>
+    <ul>
+      <li>Engineered real-time voice interview pipelines using the OpenAI API and Retell AI on serverless AWS Lambda/S3 with Supabase Postgres, handling prompt chaining and session state in production.</li>
+      <li>Cut interview failure rate 30% by hardening prompt logic and edge-case handling in transcription and LLM response parsing.</li>
+    </ul>
+
+    <div class="rrow"><div><b>Finance Intern</b> &middot; Katsah.com &middot; E-Commerce Platform</div><div class="rwhen">May&ndash;Aug 2024 &middot; Remote</div></div>
+    <ul>
+      <li>Wrote SQL diagnosing checkout funnel drop-off (leakage costing 50&ndash;60% of potential conversions) and built Excel variance models isolating pricing and marketing spend as revenue drivers; both informed leadership budget decisions.</li>
+    </ul>
+
+    <div class="rsec">Projects</div>
+    <div class="rrow"><div><b>Machine Learning Robo-Advisory System</b></div><div class="rwhen">Python &middot; Pandas &middot; scikit-learn</div></div>
+    <ul>
+      <li>Monthly stock-selection engine across 50 large-cap US equities using an LR/RF/GBM ensemble with 10 engineered features; walk-forward validated across 23 out-of-sample periods.</li>
+      <li>Fractional Kelly sizing (25% fraction, 20% cap) and GMM regime detection scaling exposure 100/75/50% &mdash; +67.7% total return vs +46.3% SPY (Feb 2023&ndash;Dec 2024), Sharpe 1.89, max drawdown 8%.</li>
+    </ul>
+
+    <div class="rsec">Technical Skills</div>
+    <div class="rskill"><span>Languages</span>Python, C, JavaScript, TypeScript, SQL, Java, C++, HTML/CSS</div>
+    <div class="rskill"><span>Libraries</span>Pandas, NumPy, scikit-learn, Matplotlib, SciPy, Statsmodels, TensorFlow, LangChain</div>
+    <div class="rskill"><span>Frameworks</span>Next.js, React, FastAPI, REST, Node.js, Flask</div>
+    <div class="rskill"><span>Systems</span>AWS (Lambda, S3), Supabase, Git, Linux, Jupyter, PowerBI, Excel, Azure</div>
+    <div class="rskill"><span>Finance</span>FX &amp; Fixed Income, Risk-Adjusted Portfolio Evaluation, Financial Reporting, GAAP, ASPE, IFRS</div>
+
+    <div class="rfoot">
+      <a id="resumeDl" href="resume.pdf" download="Umer_Cheema_Resume.pdf">Download PDF</a>
+      <button id="resumeBack" type="button">&larr; Back to the card</button>
+    </div>
   </div>
 
   <!-- 6 · FLANKING SIGN -->
