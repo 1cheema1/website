@@ -1044,6 +1044,66 @@ let prev = performance.now(), firstFrame = true, firstFrameAt = 0, loaderDone = 
 // uniformly too small, with clear colour under the floor.
 let lastW = innerWidth, lastH = innerHeight;
 let frameNo = 0;
+let lastRenderAt = 0, lastDrawnP = -1;
+const IDLE_FPS = 24;
+
+// ── warmup, one pose per frame, behind the loader ────────────────
+// The stall going from the vault door into the office is first-encounter
+// shader compilation — the program count climbs 30 → 34 across exactly that
+// stretch, and each build blocks the main thread.
+//
+// Doing all the poses in one blocking loop at startup was tried twice and is
+// wrong: it delays the load by however long the slowest device takes, and I
+// cannot measure that from here. Instead one pose is warmed per frame while
+// the loader is still opaque over the canvas. The stalls are real but they
+// land where nothing is moving and nothing is visible, and if a device is slow
+// enough that the loader finishes first, the remaining poses are simply
+// dropped — no worse off than before.
+//
+// Scissored to 4x4 so rasterisation costs nothing; the draw calls still run,
+// which is what actually builds the programs. Straight to the renderer, not
+// through the composer: resizing composer targets is what broke this before.
+const WARM_POSES = [0.03, 0.12, 0.24, 0.32, 0.47, 0.64, 0.81, 0.955, 1.0];
+let warmIdx = 0;
+
+const _vp = new THREE.Vector4(), _sc = new THREE.Vector4();
+
+function warmOnePose() {
+  if (warmIdx >= WARM_POSES.length) return;
+  const wp = WARM_POSES[warmIdx++];
+  const sp = camera.position.clone(), sq = camera.quaternion.clone();
+  // Save the ACTUAL viewport and scissor and put those back afterwards.
+  // Reconstructing them from innerWidth/innerHeight is wrong whenever the
+  // drawing buffer and the window disagree — which happens on a restored tab,
+  // on mobile, and under headless capture — and it left the bottom fifth of
+  // the canvas unrendered.
+  renderer.getViewport(_vp);
+  renderer.getScissor(_sc);
+  const hadScissor = renderer.getScissorTest();
+  try {
+    renderer.setScissorTest(true);
+    renderer.setScissor(0, 0, 4, 4);
+    renderer.setViewport(0, 0, 4, 4);
+    sampleCamera(wp);
+    camera.position.copy(cPos);
+    camera.lookAt(cTgt);
+    for (const r of world.rooms) r.g.visible = true;
+    intro.update(wp);
+    panels.setResume(0);
+    panels.update(wp, camera);
+    renderer.render(scene, camera);
+    renderer.render(panels.holeScene, camera);
+  } catch (err) {
+    console.warn('warmup pose skipped', wp, err);
+    warmIdx = WARM_POSES.length;
+  } finally {
+    renderer.setViewport(_vp);
+    renderer.setScissor(_sc);
+    renderer.setScissorTest(hadScissor);
+    camera.position.copy(sp);
+    camera.quaternion.copy(sq);
+  }
+}
 
 function frame(now) {
   const dt = Math.min(0.05, (now - prev) / 1000); prev = now;
@@ -1158,18 +1218,43 @@ function frame(now) {
   }
 
   if (firstFrame) { renderer.shadowMap.needsUpdate = true; }
-  if (NO_POST) renderer.render(scene, camera);
-  else composer.render();
-  // renderer.info resets on every render() call — snapshot pass 1 before
-  // pass 2 overwrites it, so the debug readout reflects the whole frame.
-  const passDraws = renderer.info.render.calls, passTris = renderer.info.render.triangles;
-  // Punch the CSS3D holes as a second raw pass directly onto the canvas —
-  // see the comment on holeMaterial() in panels.js for why this can't be
-  // part of the composited (bloom) pass.
-  renderer.autoClear = false;
-  renderer.render(panels.holeScene, camera);
-  renderer.autoClear = true;
-  cssRenderer.render(cssScene, camera);
+  // ── render only when a new frame is worth drawing ─────────────
+  // This is the big one. The scene is STATIC whenever the camera is at rest —
+  // waiting on the break button, parked at a reading stop, sitting at the
+  // résumé desk — and we were still drawing a full scene plus bloom, DoF and
+  // grain sixty times a second to produce the same image. The main thread was
+  // permanently saturated rendering a still, which is exactly why the pointer
+  // starved: a DOM cursor is painted by that same thread.
+  //
+  // While idle we drop to IDLE_FPS. The only things moving then are dust,
+  // gears and grain, none of which read differently at 24fps, and the freed
+  // budget goes to input. While anything is actually moving — travelling, the
+  // intro playing, the résumé flight — we render every frame as before.
+  const moving = !!travel || !!resumeTween || (introTimeline && introTimeline.isActive()) ||
+                 Math.abs(p - lastDrawnP) > 1e-5;
+  const dueIdle = (now - lastRenderAt) >= (1000 / IDLE_FPS);
+  const shouldRender = moving || dueIdle || firstFrame;
+
+  // Gated, not early-returned: the loader fade and HUD bookkeeping live below
+  // and must keep running on skipped frames.
+  let passDraws = 0, passTris = 0;
+  if (shouldRender) {
+    lastRenderAt = now;
+    lastDrawnP = p;
+
+    if (NO_POST) renderer.render(scene, camera);
+    else composer.render();
+    // renderer.info resets on every render() call — snapshot pass 1 before
+    // pass 2 overwrites it, so the debug readout reflects the whole frame.
+    passDraws = renderer.info.render.calls; passTris = renderer.info.render.triangles;
+    // Punch the CSS3D holes as a second raw pass directly onto the canvas —
+    // see the comment on holeMaterial() in panels.js for why this can't be
+    // part of the composited (bloom) pass.
+    renderer.autoClear = false;
+    renderer.render(panels.holeScene, camera);
+    renderer.autoClear = true;
+    cssRenderer.render(cssScene, camera);
+  }
 
   if (DEBUG) {
     const r = renderer.info.render;
@@ -1195,6 +1280,9 @@ function frame(now) {
   // throttled hard in backgrounded/occluded tabs, which left the full-screen
   // loader stuck at opacity 1 over the whole scene. rAF is already proven to
   // be running here — if it stops, there is nothing to look at anyway.
+  // one pose per frame, only while the loader is still hiding the canvas
+  if (!loaderDone && !firstFrame && warmIdx < WARM_POSES.length) warmOnePose();
+
   if (firstFrame) {
     firstFrame = false;
     firstFrameAt = now;
@@ -1212,16 +1300,7 @@ function frame(now) {
     if (titleCard) titleCard.classList.add('show');
     breakBtn.classList.remove('hide');
   }
-  // A full pipeline warmup was tried here and removed. Rendering a handful of
-// real frames behind the loader does eliminate the remaining mid-journey
-// compiles — measured: the program count stops climbing entirely, sitting at
-// its final value from the very first stop. But even at 64x64 the resize of
-// the composer's render targets plus one scene render was heavy enough to stop
-// the page loading under a software rasteriser, and it is not something I can
-// verify on real hardware from here. Shipping an unverifiable stall in the
-// loading path is worse than the four compiles it saves.
-//
-requestAnimationFrame(frame);
+  requestAnimationFrame(frame);
 }
 step(96, 'Throwing the bolts');
 await paint();
