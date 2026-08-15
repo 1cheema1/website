@@ -1,0 +1,231 @@
+import * as THREE from 'three';
+import { CSS3DObject } from '../lib/CSS3DRenderer.js';
+import { CARRIER, FLANK, FLANK_WINDOW, PANEL_WINDOW } from './config.js';
+
+const clamp01 = v => v < 0 ? 0 : v > 1 ? 1 : v;
+function crossfade4(p, [a, b, c, d]) {
+  if (p <= a || p >= d) return 0;
+  if (p < b) return clamp01((p - a) / (b - a));
+  if (p < c) return 1;
+  return 1 - clamp01((p - c) / (d - c));
+}
+
+// Is this world position actually in front of the camera?
+//
+// This guard exists because of a real, nasty bug. CSS3DRenderer does NOT cull
+// objects behind the camera — it just applies a matrix3d. An element behind the
+// near plane gets a degenerate projection and can blow up to cover the entire
+// CSS3D layer. Since the flank photo/sign have a near-black background, a stray
+// one would render as a giant black sheet; any OTHER panel's hole-punch then
+// showed that black instead of its own HTML — a black panel quad with its paper
+// backing still visible around the edge. Gating on p-windows alone was not
+// enough (windows overlapped), so every panel is checked geometrically too.
+const _fwd = new THREE.Vector3();
+const _rel = new THREE.Vector3();
+function inFrontOf(camera, pos) {
+  camera.getWorldDirection(_fwd);
+  _rel.copy(pos).sub(camera.position);
+  return _rel.dot(_fwd) > 0.15;   // metres in front of the camera
+}
+
+// A "hole punch" plane: writes RGBA(0,0,0,0) with NoBlending so the
+// WebGL canvas becomes transparent exactly where the CSS panel sits.
+//
+// Holes live in their own scene, rendered as a SEPARATE pass directly to
+// the canvas after composer.render() — EffectComposer's intermediate
+// render targets don't reliably carry alpha through a bloom pass, so a
+// hole punched during the main scene pass gets silently opacified back
+// to black by the time bloom composites it. A second raw render, after
+// the composite, punches through regardless of what bloom did. That
+// means these can't depth-test against the real scene (that depth
+// buffer no longer means anything post-composite) — depthTest is off,
+// so the panel always wins. Fine here: every panel is the intended
+// unoccluded subject of its shot, never something meant to be hidden.
+function holeMaterial() {
+  return new THREE.MeshBasicMaterial({
+    color: 0x000000,
+    opacity: 0,
+    blending: THREE.NoBlending,
+    side: THREE.FrontSide,
+    depthTest: false,
+    depthWrite: false
+  });
+}
+
+export function buildPanels(scene, cssScene, M, stops) {
+  const items = {};
+  const holeScene = new THREE.Scene();
+
+  for (const key of Object.keys(CARRIER)) {
+    const c = CARRIER[key];
+    const el = document.getElementById(key);   // element ids match carrier keys
+    const scale = c.w / c.el[0];
+
+    const obj = new CSS3DObject(el);
+    obj.position.fromArray(c.pos);
+    obj.scale.set(scale, scale, scale);
+    cssScene.add(obj);
+
+    const hole = new THREE.Mesh(new THREE.PlaneGeometry(c.w, c.h), holeMaterial());
+    hole.position.fromArray(c.pos);
+    hole.frustumCulled = true;
+    holeScene.add(hole);
+
+    items[key] = { obj, hole, c };
+  }
+
+  // ── flanking photo + sign at the vault-open reveal ────────────────
+  const flank = {};
+  for (const key of Object.keys(FLANK)) {
+    const c = FLANK[key];
+    const el = document.getElementById('flank-' + key);
+    const scale = c.w / c.el[0];
+    const obj = new CSS3DObject(el);
+    obj.position.fromArray(c.pos);
+    obj.scale.set(scale, scale, scale);
+    cssScene.add(obj);
+
+    const hole = new THREE.Mesh(new THREE.PlaneGeometry(c.w, c.h), holeMaterial());
+    hole.position.fromArray(c.pos);
+    hole.frustumCulled = true;
+    holeScene.add(hole);
+
+    flank[key] = { obj, hole, c };
+  }
+
+  // ── physical stock behind each panel ────────────────────────────
+  const backs = [];
+
+  // 1 · office tear sheet — real paper with a shadow underneath
+  {
+    const c = CARRIER.sheet;
+    const g = new THREE.Group();
+    const paper = new THREE.Mesh(new THREE.BoxGeometry(c.w + 0.008, c.h + 0.008, 0.0012), M.paper);
+    paper.position.z = -0.0012; paper.castShadow = true; paper.receiveShadow = true;
+    g.add(paper);
+    // a second sheet peeking out behind, slightly rotated
+    const p2 = new THREE.Mesh(new THREE.BoxGeometry(c.w + 0.004, c.h + 0.004, 0.0010), M.paper);
+    p2.position.set(0.010, -0.008, -0.0030); p2.rotation.z = 0.018;
+    p2.castShadow = true; p2.receiveShadow = true; g.add(p2);
+    g.position.fromArray(c.pos);
+    scene.add(g); backs.push({ g, key: 'sheet' });
+  }
+
+  // 3 · study book — page block, boards and a ribbon
+  {
+    const c = CARRIER.spread;
+    const g = new THREE.Group();
+    const pages = new THREE.Mesh(new THREE.BoxGeometry(c.w + 0.006, c.h + 0.006, 0.030), M.paper);
+    pages.position.z = -0.016; pages.castShadow = true; pages.receiveShadow = true; g.add(pages);
+    const boardM = M.leatherOx;
+    for (const s of [-1, 1]) {
+      const cover = new THREE.Mesh(new THREE.BoxGeometry(c.w / 2 + 0.014, c.h + 0.016, 0.006), boardM);
+      cover.position.set(s * (c.w / 4 + 0.006), 0, -0.034);
+      cover.castShadow = true; cover.receiveShadow = true; g.add(cover);
+    }
+    const spine = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, c.h + 0.016, 14, 1, false, 0, Math.PI), boardM);
+    spine.rotation.set(0, 0, 0); spine.position.set(0, 0, -0.034);
+    spine.rotation.x = Math.PI / 2; spine.rotation.z = Math.PI / 2;
+    g.add(spine);
+    // Short — this group tilts with the book, and a long ribbon hanging
+    // past the bottom edge rotates toward the camera's near plane and
+    // blows up to fill the frame. Keep it inside the book's own silhouette.
+    const ribbon = new THREE.Mesh(new THREE.BoxGeometry(0.009, 0.045, 0.0008),
+      new THREE.MeshStandardMaterial({ color: 0x8c2b2b, roughness: 0.7 }));
+    ribbon.position.set(0.09, -c.h / 2 - 0.008, 0.001); g.add(ribbon);
+    g.position.fromArray(c.pos);
+    scene.add(g); backs.push({ g, key: 'spread' });
+  }
+
+  // 4 · rooftop card — thick cotton stock with a bevelled gold edge
+  {
+    const c = CARRIER.card;
+    const g = new THREE.Group();
+    const stock = new THREE.Mesh(new THREE.BoxGeometry(c.w + 0.010, c.h + 0.010, 0.0035), M.paper);
+    stock.position.z = -0.002; stock.castShadow = true; stock.receiveShadow = true; g.add(stock);
+    const edge = new THREE.Mesh(new THREE.BoxGeometry(c.w + 0.013, c.h + 0.013, 0.0015), M.gold);
+    edge.position.z = -0.0032; edge.castShadow = true; g.add(edge);
+    g.position.fromArray(c.pos);
+    scene.add(g); backs.push({ g, key: 'card' });
+  }
+
+  // 4b · message pad — a real pad of paper with a pen resting on it
+  {
+    const c = CARRIER.note;
+    const g = new THREE.Group();
+    const pad = new THREE.Mesh(new THREE.BoxGeometry(c.w + 0.012, c.h + 0.014, 0.012), M.paper);
+    pad.position.z = -0.007; pad.castShadow = true; pad.receiveShadow = true; g.add(pad);
+    const backing = new THREE.Mesh(new THREE.BoxGeometry(c.w + 0.020, c.h + 0.022, 0.006), M.leatherOx);
+    backing.position.z = -0.015; backing.castShadow = true; g.add(backing);
+    g.position.fromArray(c.pos);
+    scene.add(g); backs.push({ g, key: 'note' });
+  }
+
+  // brass frame behind the photo, small stand-off block behind the sign
+  {
+    const c = FLANK.photo;
+    // deep enough to read as a real picture frame from the wide shot
+    const frame = new THREE.Mesh(new THREE.BoxGeometry(c.w + 0.075, c.h + 0.075, 0.035), M.brass);
+    frame.position.set(c.pos[0], c.pos[1], c.pos[2] - 0.019);
+    frame.castShadow = true; frame.receiveShadow = true;
+    scene.add(frame); backs.push({ g: frame, key: 'photo' });
+  }
+  {
+    const c = FLANK.sign;
+    const back = new THREE.Mesh(new THREE.BoxGeometry(c.w + 0.03, c.h + 0.03, 0.016), M.darkSteel);
+    back.position.set(c.pos[0], c.pos[1], c.pos[2] - 0.009);
+    back.castShadow = true; back.receiveShadow = true;
+    scene.add(back); backs.push({ g: back, key: 'sign' });
+  }
+
+  // ── orient everything to face its camera stop ────────────────────
+  function orient() {
+    for (const key of Object.keys(items)) {
+      const { obj, hole } = items[key];
+      const s = stops[key];
+      if (!s) continue;
+      obj.lookAt(s.pos);
+      hole.quaternion.copy(obj.quaternion);
+      // nudge the punch plane a hair toward the camera so it always
+      // wins the depth test against its own paper backing
+      const n = new THREE.Vector3(0, 0, 1).applyQuaternion(obj.quaternion);
+      hole.position.fromArray(items[key].c.pos).addScaledVector(n, 0.0006);
+    }
+    // flank panels face the fixed 'wide' camera stop — computed once,
+    // not per room, since they never move.
+    const wide = stops.wide;
+    if (wide) {
+      for (const key of Object.keys(flank)) {
+        const { obj, hole } = flank[key];
+        obj.lookAt(wide.pos);
+        hole.quaternion.copy(obj.quaternion);
+        const n = new THREE.Vector3(0, 0, 1).applyQuaternion(obj.quaternion);
+        hole.position.fromArray(flank[key].c.pos).addScaledVector(n, 0.0006);
+      }
+    }
+    for (const b of backs) {
+      const src = items[b.key] || flank[b.key];
+      if (src) b.g.quaternion.copy(src.obj.quaternion);
+    }
+  }
+
+  // visibility gating uses PANEL_WINDOW from config.js
+  function update(p, camera) {
+    for (const key of Object.keys(items)) {
+      const [a, b] = PANEL_WINDOW[key];
+      const on = p >= a && p <= b && inFrontOf(camera, items[key].obj.position);
+      items[key].obj.visible = on;
+      items[key].hole.visible = on;
+      items[key].obj.element.style.opacity = on ? '1' : '0';
+    }
+    const fo = crossfade4(p, FLANK_WINDOW);
+    for (const key of Object.keys(flank)) {
+      const on = fo > 0 && inFrontOf(camera, flank[key].obj.position);
+      flank[key].obj.visible = on;
+      flank[key].hole.visible = on;
+      flank[key].obj.element.style.opacity = on ? String(fo) : '0';
+    }
+  }
+
+  return { items, flank, holeScene, orient, update };
+}

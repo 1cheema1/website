@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Umer Cheema</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --paper:#f5f1e8; --paper2:#efe9dc; --ink:#12100c; --ink2:#3a352b;
+  --muted:#7c7466; --rule:#cdc4b2;
+  --gold:#9a7b2e; --gold2:#c9a227; --green:#2f7d4f; --red:#a33a2a;
+  --serif:'Instrument Serif',Georgia,serif;
+  --sans:'Instrument Sans',-apple-system,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,monospace;
+}
+html,body{background:#08070a;color:#f5f1e8;font-family:var(--sans);height:100%;overflow:hidden;}
+canvas{display:block;}
+body.has-cursor,body.has-cursor *{cursor:none !important;}
+
+/* ── stacking: CSS3D underneath, WebGL on top punching holes ── */
+#css3d{position:fixed;inset:0;z-index:1;pointer-events:none;}
+#gl{position:fixed;inset:0;z-index:2;pointer-events:none;}
+
+/* ── custom cursor ── */
+#cursor{position:fixed;z-index:9500;top:0;left:0;width:22px;height:22px;margin:-11px 0 0 -11px;
+  border-radius:50%;border:1px solid rgba(201,162,39,.85);pointer-events:none;
+  transition:width .18s ease,height .18s ease,margin .18s ease,background .18s ease,border-color .18s ease;
+  mix-blend-mode:difference;}
+#cursor::after{content:'';position:absolute;inset:0;margin:auto;width:3px;height:3px;border-radius:50%;
+  background:var(--gold2);}
+#cursor.hot{width:40px;height:40px;margin:-20px 0 0 -20px;background:rgba(201,162,39,.14);}
+
+/* ── top header ── */
+#topnav{position:fixed;z-index:7;top:0;left:0;right:0;display:flex;align-items:center;
+  justify-content:space-between;padding:18px 30px;font-family:var(--mono);
+  background:linear-gradient(180deg,rgba(6,5,8,.62),rgba(6,5,8,0));
+  transform:translateY(-100%);transition:transform .6s cubic-bezier(.22,.9,.3,1);}
+#topnav.show{transform:translateY(0);}
+#topnav .brand{font-size:11px;letter-spacing:.22em;color:#f5f1e8;text-transform:uppercase;font-weight:500;}
+#topnav nav{display:flex;gap:6px;}
+#topnav nav button{background:none;border:none;font-family:var(--mono);font-size:10px;
+  letter-spacing:.16em;text-transform:uppercase;color:rgba(245,241,232,.5);padding:8px 13px;
+  cursor:pointer;position:relative;transition:color .25s ease;}
+#topnav nav button::after{content:'';position:absolute;left:13px;right:13px;bottom:4px;height:1px;
+  background:var(--gold2);transform:scaleX(0);transform-origin:left;transition:transform .3s ease;}
+#topnav nav button:hover{color:rgba(245,241,232,.85);}
+#topnav nav button.on{color:#f5f1e8;}
+#topnav nav button.on::after{transform:scaleX(1);}
+#topnav .navtools{display:flex;gap:8px;align-items:center;}
+#topnav .navtools button{background:rgba(245,241,232,.06);border:1px solid rgba(245,241,232,.16);
+  color:rgba(245,241,232,.75);font-family:var(--mono);font-size:10px;letter-spacing:.1em;
+  padding:7px 11px;cursor:pointer;transition:all .2s ease;text-transform:uppercase;}
+#topnav .navtools button:hover{background:rgba(245,241,232,.12);border-color:rgba(245,241,232,.32);}
+#topnav .navtools button.muted{color:rgba(245,241,232,.35);}
+
+/* ── overlay chrome ── */
+#hud{position:fixed;z-index:6;inset:0;pointer-events:none;
+  font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;
+  color:rgba(245,241,232,.5);mix-blend-mode:difference;}
+#hud .bl{position:absolute;bottom:26px;left:30px;}
+#hud .br{position:absolute;bottom:26px;right:30px;text-align:right;}
+#hud b{font-weight:500;color:rgba(245,241,232,.85);}
+
+#chapters{position:fixed;z-index:6;right:30px;top:50%;transform:translateY(-50%);
+  display:flex;flex-direction:column;gap:14px;pointer-events:none;}
+#chapters i{display:block;width:22px;height:1px;background:rgba(245,241,232,.22);
+  transition:background .45s ease,width .45s ease;}
+#chapters i.on{background:var(--gold2);width:36px;}
+
+#scrollcue{position:fixed;z-index:6;left:50%;bottom:34px;transform:translateX(-50%);
+  font-family:var(--mono);font-size:9px;letter-spacing:.26em;text-transform:uppercase;
+  color:rgba(245,241,232,.42);opacity:0;transition:opacity .7s ease;text-align:center;}
+#scrollcue b{color:var(--gold2);font-weight:500;border:1px solid rgba(201,162,39,.45);
+  padding:2px 6px;margin:0 2px;}
+#scrollcue.show{opacity:1;}
+#scrollcue span{display:block;width:1px;height:26px;margin:10px auto 0;
+  background:linear-gradient(180deg,rgba(245,241,232,.45),transparent);}
+
+/* ── skip intro ── */
+#skipIntro{position:fixed;z-index:8;right:30px;bottom:34px;background:rgba(8,7,10,.55);
+  border:1px solid rgba(245,241,232,.28);color:rgba(245,241,232,.82);font-family:var(--mono);
+  font-size:9px;letter-spacing:.24em;text-transform:uppercase;padding:11px 18px;cursor:pointer;
+  backdrop-filter:blur(6px);transition:opacity .5s ease,border-color .2s ease;opacity:1;}
+#skipIntro:hover{border-color:var(--gold2);color:#f5f1e8;}
+#skipIntro.hide{opacity:0;pointer-events:none;}
+
+#loader{position:fixed;inset:0;z-index:20;background:#08070a;display:flex;
+  align-items:center;justify-content:center;flex-direction:column;gap:18px;
+  transition:opacity .8s ease, visibility 0s linear .8s;}
+/* visibility (not just opacity) so a full-screen overlay can never linger
+   as a ghost over the scene once it has faded */
+#loader.gone{opacity:0;pointer-events:none;visibility:hidden;}
+#loader .n{font-family:var(--serif);font-size:34px;letter-spacing:.02em;color:#f5f1e8;}
+#loader .b{width:170px;height:1px;background:rgba(245,241,232,.16);overflow:hidden;}
+#loader .b i{display:block;height:100%;width:0;background:var(--gold2);transition:width .3s ease;}
+#loader .s{font-family:var(--mono);font-size:9px;letter-spacing:.3em;color:rgba(245,241,232,.4);text-transform:uppercase;}
+
+</style>
+<link rel="stylesheet" href="panels.css">
+</head>
+<body>
+
+<div id="errbox" style="position:fixed;inset:0;z-index:9999;background:#140404;color:#ff9c8c;
+  font:13px/1.5 ui-monospace,monospace;padding:34px;white-space:pre-wrap;display:none;overflow:auto;"></div>
+<script>
+(function(){
+  var box=null;
+  function show(msg){
+    box=box||document.getElementById('errbox');
+    if(!box)return;
+    box.style.display='block';
+    box.textContent+=msg+'\n\n';
+  }
+  addEventListener('error',function(e){
+    var tgt=e.target;
+    var tinfo=(tgt&&tgt!==window)?(' [resource: '+tgt.tagName+' src='+(tgt.src||tgt.href||'?')+']'):'';
+    show('ERROR: '+(e.message||e.type)+tinfo+'\n  at '+(e.filename||'?')+':'+(e.lineno||'?')+':'+(e.colno||'?')+
+      (e.error&&e.error.stack?'\n'+e.error.stack:''));
+  },true);
+  addEventListener('unhandledrejection',function(e){
+    show('REJECTION: '+(e.reason&&(e.reason.stack||e.reason.message)||e.reason));
+  });
+  var ce=console.error;
+  console.error=function(){ show('console.error: '+[].join.call(arguments,' ')); ce.apply(console,arguments); };
+})();
+</script>
+<div id="loader">
+  <div class="n">Umer Cheema</div>
+  <div class="b"><i id="lbar"></i></div>
+  <div class="s" id="lmsg">Loading</div>
+</div>
+
+<div id="css3d"></div>
+<div id="gl"></div>
+<div id="cursor"></div>
+
+<header id="topnav">
+  <div class="brand">Umer Cheema</div>
+  <nav>
+    <button data-jump="office">Experience</button>
+    <button data-jump="trading">Positions</button>
+    <button data-jump="study">Research</button>
+    <button data-jump="rooftop">Contact</button>
+  </nav>
+  <div class="navtools">
+    <button id="soundToggle" class="muted" aria-label="Toggle sound">SOUND OFF</button>
+  </div>
+</header>
+
+<div id="hud">
+  <div class="bl" id="chapname">—</div>
+  <div class="br">Available <b>Winter&nbsp;2027</b></div>
+</div>
+<div id="chapters"><i></i><i></i><i></i><i></i><i></i></div>
+<div id="scrollcue"><b>W</b> forward &nbsp;·&nbsp; <b>S</b> back<span></span></div>
+<button id="skipIntro">Skip Intro ↓</button>
+
+
+<!-- ═══════════ CSS3D PANEL SOURCE ═══════════ -->
+<div id="panelsrc" style="position:fixed;left:-99999px;top:0;">
+
+  <!-- 1 · OFFICE TEAR SHEET -->
+  <div id="sheet" class="p3d">
+    <div class="grain"></div>
+    <div class="hdr">
+      <div class="who">
+        <img class="ph" src="img/photo.jpg" alt="">
+        <div>
+          <h1>Umer Cheema</h1>
+          <div class="sub">Honours CS &amp; Financial Management &middot; Waterloo</div>
+          <div class="avail">Seeking Winter 2027</div>
+        </div>
+      </div>
+      <div class="doc">
+        <b>Experience</b>
+        Section 01 / 04<br>
+        4 Terms
+      </div>
+    </div>
+
+    <div class="body">
+      <div class="role">
+        <div class="rt"><em>MCB Bank</em><span>Jul–Sep 2026</span></div>
+        <div class="rr">Summer Analyst &middot; Treasury &amp; Forex</div>
+        <ul>
+          <li>Shipped a <b>Bloomberg-style AI news terminal</b> scoring relevance and sentiment across Pakistan's three largest financial sources — saved a 30+ person desk <b>~15 analyst-hours/day</b>.</li>
+          <li>Analysed the daily <b>FX blotter</b> (NOP, Nostro, forward points, reval) on a book carrying <b>$100M+</b> live USD exposure; tracked CRR/SLR against regulatory thresholds.</li>
+        </ul>
+      </div>
+      <div class="role">
+        <div class="rt"><em>MCB Bank</em><span>May–Jul 2026</span></div>
+        <div class="rr">Software Engineer Intern</div>
+        <ul>
+          <li>Built the retrieval core of <b>MCB Live's</b> chatbot — a custom <b>RAG pipeline</b> on MiniLM + Groq. Projected <b>200M+ PKR</b> saved annually, support load down <b>35%</b>.</li>
+          <li>Shipped PII guardrails and a PM-facing tuning panel; ran a <b>61-case QA suite</b> that surfaced backend security gaps the bank adopted for remediation.</li>
+        </ul>
+      </div>
+      <div class="role">
+        <div class="rt"><em>Krownie</em><span>May–Aug 2025</span></div>
+        <div class="rr">Software Engineer Intern</div>
+        <ul>
+          <li>Engineered <b>real-time voice interview pipelines</b> on OpenAI + Retell AI over serverless AWS Lambda/S3 with Supabase.</li>
+          <li>Cut interview failure rate <b>30%</b> by hardening prompt logic and transcription edge cases.</li>
+        </ul>
+      </div>
+      <div class="role">
+        <div class="rt"><em>Katsah</em><span>May–Aug 2024</span></div>
+        <div class="rr">Finance Intern</div>
+        <ul>
+          <li><b>SQL</b> funnel analysis pinpointing leakage worth <b>50–60%</b> of potential conversions.</li>
+          <li>Excel variance models isolating pricing and marketing spend as revenue drivers — fed directly into leadership budget decisions.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="foot"><span>Umer Cheema</span><span>uicheema@uwaterloo.ca &nbsp;·&nbsp; umercheema.xyz</span></div>
+  </div>
+
+  <!-- 2 · TRADING BOARD -->
+  <div id="board" class="p3d">
+    <div class="scan"></div>
+    <div class="bh">
+      <h2>Active Positions</h2>
+      <div class="r">Section 02 / 04 &nbsp;·&nbsp; Marked to Market</div>
+    </div>
+    <table>
+      <colgroup><col class="c1"><col class="c2"><col class="c3"><col class="c4"></colgroup>
+      <thead><tr><th>Ticker</th><th>Description</th><th>Stack</th><th class="n">Return</th></tr></thead>
+      <tbody>
+        <tr class="pos-row">
+          <td class="sym">$ROBOADVISOR.PY</td>
+          <td class="desc">ML robo-advisory — LR + RF + GBM ensemble, GMM regime detection, Kelly sizing</td>
+          <td class="stack">Python · scikit-learn · GMM</td>
+          <td class="n up">+23.0%</td>
+        </tr>
+        <tr class="pos-row">
+          <td class="sym">$CFM101.PY</td>
+          <td class="desc">$1M CAD systematic portfolio — four-factor scoring, 100 Monte Carlo trials, max Sharpe</td>
+          <td class="stack">Python · NumPy · yfinance</td>
+          <td class="n up">+8.1%</td>
+        </tr>
+        <tr class="pos-row">
+          <td class="sym">$T20WC.PY</td>
+          <td class="desc">T20 World Cup match predictor — Elo, rolling form, venue factors, blended 60/40 with ICC</td>
+          <td class="stack">Python · LogReg · Streamlit</td>
+          <td class="n up">85% ACC</td>
+        </tr>
+        <tr class="pos-row">
+          <td class="sym">$SUBTRACK</td>
+          <td class="desc">Subscription burn-rate tracker — per-user dashboards, category breakdowns, cloud-persisted</td>
+          <td class="stack">Python · PostgreSQL · Vercel</td>
+          <td class="n live">LIVE</td>
+        </tr>
+        <tr class="pos-row">
+          <td class="sym">$ZARF</td>
+          <td class="desc">Pre-nikah clarity platform — double-blind conflict scenarios, financial stress test</td>
+          <td class="stack">Next.js · Prisma · Supabase</td>
+          <td class="n live">LIVE</td>
+        </tr>
+        <tr class="pos-row">
+          <td class="sym">$DEBATELY.AI</td>
+          <td class="desc">AI debate platform — Gemini judges arguments in real time across multi-round formats</td>
+          <td class="stack">Next.js · React · Gemini API</td>
+          <td class="n flat">WIP</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="bf"><span>6 Positions Open</span><span>Benchmark S&amp;P 500 <b>+19.0%</b></span><span>github.com/1cheema1</span></div>
+  </div>
+
+  <!-- 3 · STUDY BOOK SPREAD -->
+  <div id="spread" class="p3d">
+    <div class="pg l">
+      <h3>Coverage</h3>
+      <div class="tags">
+        <i>Quantitative Finance</i><i>Machine Learning</i><i>Software Engineering</i>
+        <i>AI / LLMs</i><i>Sports Analytics</i><i>Hackathons</i><i>Cricket</i><i>Gym</i>
+      </div>
+      <h3>On the desk</h3>
+      <div class="bk"><em>Advances in Financial Machine Learning</em><span>Marcos López de Prado</span></div>
+      <div class="bk"><em>Designing Data-Intensive Applications</em><span>Martin Kleppmann</span></div>
+      <div class="bk"><em>The Kite Runner</em><span>Khaled Hosseini</span></div>
+      <div class="pn">Research &nbsp;·&nbsp; 03 / 04</div>
+    </div>
+    <div class="gutter"></div>
+    <div class="pg r">
+      <h3>Open questions</h3>
+      <div class="think">
+        <p>why most finance “AI” is just linear regression with extra steps</p>
+        <p>how much of my robo-advisor's alpha is just the 2024 bull run</p>
+        <p>whether i should learn rust</p>
+        <p>when i will ever use the epsilon-delta definition of a limit</p>
+        <p>where the pakistan cricket team went wrong</p>
+      </div>
+      <div class="hand">Currently building Debately — an AI debate platform where Gemini judges the argument, live.</div>
+      <div class="pn">Waterloo, ON</div>
+    </div>
+  </div>
+
+  <!-- 4 · ROOFTOP CARD -->
+  <div id="card" class="p3d">
+    <div class="grain"></div>
+    <h1>Umer Cheema</h1>
+    <div class="role">Computer Science &amp; Finance &middot; University of Waterloo</div>
+    <div class="rule"></div>
+    <div class="rows">
+      <div class="row"><div class="k">Email</div><div class="v"><a href="mailto:uicheema@uwaterloo.ca">uicheema@uwaterloo.ca</a></div></div>
+      <div class="row"><div class="k">GitHub</div><div class="v"><a href="https://github.com/1cheema1" target="_blank" rel="noopener">github.com/1cheema1</a></div></div>
+      <div class="row"><div class="k">LinkedIn</div><div class="v"><a href="https://www.linkedin.com/in/1cheema1/" target="_blank" rel="noopener">in/1cheema1</a></div></div>
+      <div class="row"><div class="k">Résumé</div><div class="v"><a href="resume.pdf" target="_blank" rel="noopener">Umer_Cheema_Resume.pdf</a></div></div>
+    </div>
+    <div class="stamp">Available Winter 2027</div>
+    <div class="sig"><em>Umer Cheema</em><span>Section 04 / 04</span></div>
+  </div>
+
+  <!-- 4b · ROOFTOP MESSAGE PAD -->
+  <div id="note" class="p3d">
+    <div class="rule-lines"></div>
+    <div class="nhead">
+      <span>Leave a note</span>
+      <span class="to">&rarr; uicheema@uwaterloo.ca</span>
+    </div>
+    <textarea id="noteText" placeholder="Write something…" spellcheck="false"></textarea>
+    <div class="nfoot">
+      <input id="noteFrom" type="text" placeholder="your email (optional)" autocomplete="email">
+      <button id="noteSend" type="button">Send</button>
+    </div>
+    <div class="nstatus" id="noteStatus"></div>
+  </div>
+
+  <!-- 5 · FLANKING PHOTO -->
+  <div id="flank-photo" class="p3d">
+    <div class="mat">
+      <img src="img/photo.jpg" alt="Umer Cheema">
+      <div class="cap">Umer Cheema</div>
+    </div>
+  </div>
+
+  <!-- 6 · FLANKING SIGN -->
+  <div id="flank-sign" class="p3d">
+    <div class="line1">VAULT UNLOCKED</div>
+    <div class="line2">: ENTER</div>
+  </div>
+
+</div>
+
+<script type="importmap">
+{ "imports": { "three": "./lib/three.module.js" } }
+</script>
+<script src="./lib/gsap.min.js"></script>
+<script type="module">
+  import('./js/main.js').catch(function(err){
+    var box = document.getElementById('errbox');
+    if (box) { box.style.display = 'block'; box.textContent += 'MODULE ERROR: ' + (err && (err.stack || err.message) || err) + '\n\n'; }
+    console.error(err);
+  });
+</script>
+</body>
+</html>
