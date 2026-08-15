@@ -471,26 +471,26 @@ body.portrait .p3d.flat.show{
 /* Type is set for a real screen now rather than a projected surface, so the
    portrait sizes above (tuned for a 760px element seen at ~60% of a phone)
    are far too large here. Back to something a phone actually reads at. */
-body.portrait .p3d.flat{font-size:15px;}
+body.portrait .p3d.flat{font-size:16px;}
 body.portrait #sheet.flat{padding:22px 20px;}
 body.portrait #sheet.flat h1{font-size:30px;}
-body.portrait #sheet.flat .sub{font-size:11px;}
+body.portrait #sheet.flat .sub{font-size:12px;}
 body.portrait #sheet.flat .avail{font-size:10.5px;padding:6px 9px;}
 body.portrait #sheet.flat .ph{width:58px;height:72px;}
 body.portrait #sheet.flat .doc{font-size:10px;}
 body.portrait #sheet.flat .doc b{font-size:14px;}
 body.portrait #sheet.flat .body{padding-bottom:8px;gap:16px;}
-body.portrait #sheet.flat .rt em{font-size:18px;}
+body.portrait #sheet.flat .rt em{font-size:20px;}
 body.portrait #sheet.flat .rt span,body.portrait #sheet.flat .rr{font-size:10px;}
-body.portrait #sheet.flat li{font-size:14px;line-height:1.45;padding-left:14px;}
+body.portrait #sheet.flat li{font-size:15.5px;line-height:1.5;padding-left:14px;}
 body.portrait #sheet.flat li:before{top:9px;width:7px;}
 body.portrait #sheet.flat .foot{position:static;margin-top:14px;font-size:10px;}
 
 body.portrait #board.flat{padding:22px 20px;}
 body.portrait #board.flat h2{font-size:30px;}
 body.portrait #board.flat .r{font-size:10px;}
-body.portrait #board.flat td.sym{font-size:17px;}
-body.portrait #board.flat td.desc{font-size:14px;}
+body.portrait #board.flat td.sym{font-size:19px;}
+body.portrait #board.flat td.desc{font-size:15.5px;}
 body.portrait #board.flat td.stack{font-size:10.5px;}
 body.portrait #board.flat td.n{font-size:14px;}
 body.portrait #board.flat .bf{position:static;margin-top:14px;font-size:10px;}
@@ -498,14 +498,14 @@ body.portrait #board.flat .bf{position:static;margin-top:14px;font-size:10px;}
 body.portrait #spread.flat{padding:0;}
 body.portrait #spread.flat .pg{padding:22px 20px 6px;}
 body.portrait #spread.flat h3{font-size:11px;margin:16px 0 8px;}
-body.portrait #spread.flat .hold em{font-size:19px;}
+body.portrait #spread.flat .hold em{font-size:21px;}
 body.portrait #spread.flat .hold span{font-size:11px;}
 body.portrait #spread.flat .alloc .tk{font-size:18px;width:84px;}
 body.portrait #spread.flat .alloc .nm{font-size:10.5px;}
 body.portrait #spread.flat .alloc .pf{font-size:14px;width:76px;}
 body.portrait #spread.flat .disc{font-size:9.5px;}
 body.portrait #spread.flat .prob em{font-size:18px;}
-body.portrait #spread.flat .prob span{font-size:13.5px;}
+body.portrait #spread.flat .prob span{font-size:15px;}
 body.portrait #spread.flat .pn{position:static;font-size:10px;padding:0 20px 14px;}
 
 body.portrait #card.flat{padding:26px 22px;}
@@ -513,7 +513,7 @@ body.portrait #card.flat h1{font-size:34px;}
 body.portrait #card.flat .role{font-size:11px;}
 body.portrait #card.flat .rows{gap:18px;margin-top:20px;}
 body.portrait #card.flat .row .k{font-size:10.5px;}
-body.portrait #card.flat .row .v{font-size:17px;}
+body.portrait #card.flat .row .v{font-size:19px;}
 body.portrait #card.flat .stamp,body.portrait #card.flat .sig{position:static;}
 body.portrait #card.flat .sig{text-align:left;margin-top:18px;}
 body.portrait #card.flat .sig em{font-size:26px;}

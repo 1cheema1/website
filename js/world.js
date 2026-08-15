@@ -191,7 +191,7 @@ export function buildWorld(scene, market = null) {
 // that explains WHY the bank breaks. The premise was built and not visible.
 const plaque = sc(B(0.56, 0.17, 0.014, M.brass)); at(plaque, 0, 0.745, -0.32); G.add(plaque);
     const plaqueFace = new THREE.Mesh(new THREE.PlaneGeometry(0.535, 0.152), new THREE.MeshStandardMaterial({
-      map: TEX.plaqueTexture('FIRST DEPOSIT', 'SEPT 2022 — AND EVERY ONE SINCE'), transparent: true, roughness: 0.4, metalness: 0.7, envMapIntensity: 1.0, side: THREE.DoubleSide
+      map: TEX.plaqueTexture('FIRST DEPOSIT', 'AND EVERY ONE SINCE'), transparent: true, roughness: 0.4, metalness: 0.7, envMapIntensity: 1.0, side: THREE.DoubleSide
     }));
     at(plaqueFace, 0, 0.745, -0.330, 0, Math.PI, 0); G.add(plaqueFace);
     // The plaque had its own spotlight. One more scene-wide light for a 0.5m

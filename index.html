@@ -95,23 +95,6 @@ body.has-cursor,body.has-cursor *{cursor:none !important;}
   outline-offset:3px;
 }
 
-/* ── narrow viewports ── */
-@media (max-width: 720px){
-  #topnav{padding:12px 14px;}
-  #topnav .brand{display:none;}          /* the nav itself is the identity here */
-  #topnav nav{gap:0;}
-  #topnav nav button{font-size:11px;padding:12px 9px;letter-spacing:.10em;}
-  #topnav nav button::after{left:9px;right:9px;}
-  #topnav .navtools button{font-size:11px;padding:11px 12px;}
-  /* 44px minimum touch targets on the real DOM controls */
-  #breakBtn{font-size:12px;padding:17px 26px;bottom:44px;letter-spacing:.22em;}
-  #skipIntro{font-size:11px;padding:14px 18px;bottom:20px;right:14px;}
-  #hud .bl,#hud .br{bottom:16px;font-size:9.5px;}
-  #hud .bl{left:14px;} #hud .br{right:14px;}
-  #chapters{right:12px;gap:11px;}
-  #titlecard .tc-name{font-size:clamp(30px,11vw,58px);}
-  #titlecard .tc-sub{font-size:9.5px;letter-spacing:.22em;padding:0 24px;text-align:center;}
-}
 
 /* ── overlay chrome ── */
 /* The blend mode is on the two small corner labels, NOT on this container.
@@ -201,8 +184,49 @@ body.has-cursor,body.has-cursor *{cursor:none !important;}
 #loader .b i{display:block;height:100%;width:0;background:var(--gold2);transition:width .3s ease;}
 #loader .s{font-family:var(--mono);font-size:9px;letter-spacing:.3em;color:rgba(245,241,232,.4);text-transform:uppercase;}
 
+/* Placed last on purpose: a media query adds no specificity, so these have
+   to come after the base rules they override. */
+/* ── narrow viewports ── */
+/* The bottom of a phone screen was carrying the break button, the skip link,
+   two HUD corner labels and the browser's own chrome inside about 100px, all
+   overlapping. On a phone there is room for exactly one primary action, so
+   that is what the bottom is now: one full-width button, with skip as a quiet
+   line beneath it, and the decorative chrome removed rather than shuffled. */
+@media (max-width: 720px){
+  #topnav{padding:12px 14px;}
+  #topnav .brand{display:none;}          /* the nav itself is the identity here */
+  #topnav nav{gap:0;}
+  #topnav nav button{font-size:11px;padding:12px 9px;letter-spacing:.10em;}
+  #topnav nav button::after{left:9px;right:9px;}
+  #topnav .navtools button{font-size:11px;padding:11px 12px;}
+
+  /* one action, full width, never wrapping, clear of the browser chrome */
+  #breakBtn{
+    left:16px; right:16px; transform:none;
+    bottom:calc(env(safe-area-inset-bottom, 0px) + 78px);
+    font-size:12px; letter-spacing:.16em; padding:19px 10px;
+    white-space:nowrap;
+  }
+  /* skip becomes a quiet line under it rather than a competing box */
+  #skipIntro{
+    left:50%; right:auto; transform:translateX(-50%);
+    bottom:calc(env(safe-area-inset-bottom, 0px) + 32px);
+    background:none; border:none; padding:12px 18px;
+    font-size:10.5px; color:rgba(245,241,232,.62);
+  }
+  /* both duplicate information the nav already carries, and both sat directly
+     on top of the action area */
+  #hud{display:none;}
+  #chapters{display:none;}
+
+  /* the title card was landing across the piggy's face */
+  #titlecard{justify-content:flex-start;padding-top:17vh;}
+  #titlecard .tc-name{font-size:clamp(28px,10vw,52px);}
+  #titlecard .tc-sub{font-size:9.5px;letter-spacing:.20em;padding:0 28px;text-align:center;}
+}
+
 </style>
-<link rel="stylesheet" href="panels.css?v=4">
+<link rel="stylesheet" href="panels.css?v=5">
 </head>
 <body>
 
