@@ -311,3 +311,35 @@
   border-bottom:1px solid rgba(201,162,39,.35);letter-spacing:.06em;
   transition:color .2s ease,border-color .2s ease;}
 #board td.n a.hov{color:#f5f1e8;border-bottom-color:#f5f1e8;}
+
+/* ═══ FOCUS ═══════════════════════════════════════════════════════
+   There was not a single focus style in the project. The panels are real DOM
+   inside the CSS3D layer, so keyboard users could already Tab through every
+   link and field on them — they just had no way to see where they were, which
+   is worse than not being able to reach them at all.
+
+   Two rings, because the panels come in two grounds: dark ink on the paper
+   panels, gold on the dark ones. Both use focus-visible so a mouse click never
+   paints a ring, and both use outline+offset rather than a border so nothing
+   reflows when focus moves. */
+#sheet a:focus-visible,
+#spread a:focus-visible,
+#card .row .v a:focus-visible,
+#resume .rfoot a:focus-visible,
+#resume .rfoot button:focus-visible,
+#note textarea:focus-visible,
+#note input:focus-visible,
+#note button:focus-visible{
+  outline:2px solid var(--gold);
+  outline-offset:3px;
+  border-radius:1px;
+}
+#board td.n a:focus-visible,
+#board tr.pos-row:focus-visible{
+  outline:2px solid var(--gold2,#c9a227);
+  outline-offset:3px;
+}
+/* The .hov class is applied by the raycast for the mouse; mirroring it on
+   focus keeps the two input methods showing the same state. */
+#card .row .v a:focus-visible{color:var(--gold);border-bottom-color:var(--gold);}
+#board td.n a:focus-visible{color:#f5f1e8;border-bottom-color:#f5f1e8;}

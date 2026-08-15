@@ -79,6 +79,16 @@ body.has-cursor,body.has-cursor *{cursor:none !important;}
 #topnav .navtools button:hover{background:rgba(245,241,232,.12);border-color:rgba(245,241,232,.32);}
 #topnav .navtools button.muted{color:rgba(245,241,232,.35);}
 
+/* Focus for the page chrome. Same rule as the panels: visible, offset, and
+   focus-visible only so pointer users never see it. */
+#topnav nav button:focus-visible,
+#topnav .navtools button:focus-visible,
+#breakBtn:focus-visible,
+#skipIntro:focus-visible{
+  outline:2px solid var(--gold2);
+  outline-offset:3px;
+}
+
 /* ── overlay chrome ── */
 /* The blend mode is on the two small corner labels, NOT on this container.
    #hud is inset:0, so a difference blend here made the compositor blend the

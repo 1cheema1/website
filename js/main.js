@@ -490,6 +490,9 @@ addEventListener('mousemove', wakeFromIdle, { passive: true });
 
 function updateDrift(dt, now) {
   idleFor += dt;
+  // Idle drift is camera parallax, and parallax is the specific thing the
+  // reduced-motion preference exists to stop. It was running for everyone.
+  if (REDUCED_MOTION) { drift.set(0, 0, 0); return; }
   const amt = clamp01((idleFor - IDLE_AFTER) / 2.2) * (travel ? 0 : 1);
   const t = now * 0.001;
   drift.set(
@@ -1006,6 +1009,21 @@ function updateHover() {
   const t = panelTargetAt(ptrX, ptrY);
   setHover(t ? t.el : null);
 }
+
+// The panel links are real DOM inside the CSS3D layer, so they are already in
+// the tab order — pointer-events:none does not affect focusability, which is
+// why Tab reaches them even though the mouse cannot. What was missing is that
+// RÉSUMÉ carries href="resume.pdf" as its no-JS fallback, so pressing Enter
+// downloaded the PDF instead of flying to the desk. Keyboard now gets the same
+// behaviour the mouse does.
+addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const el = document.activeElement;
+  if (!el || !el.dataset || el.dataset.act !== 'resume') return;
+  e.preventDefault();
+  AUDIO.pageTurn();
+  openResume();
+});
 
 let dispatching = false;      // el.click() below re-enters this listener otherwise
 addEventListener('click', (e) => {
