@@ -459,15 +459,27 @@ body.portrait .p3d.flat{
   max-height:none;
   overflow-y:auto;
   -webkit-overflow-scrolling:touch;
-  z-index:5;
-  opacity:0; visibility:hidden; pointer-events:none;
-  transition:opacity .45s ease, visibility 0s linear .45s;
+  /* Above the canvas, below the nav. The WebGL canvas is OPAQUE — it clears to
+     #08070a at alpha 1, and in flat mode nothing punches a hole in it — so a
+     card that fails to sit above z-index 2 is not dimmed, it is invisible. */
+  z-index:6;
+  /* display, not opacity+visibility. The previous version toggled three
+     properties with a transition and a delay between them, and on the device it
+     reported the right box, the right class and the right computed values while
+     painting nothing. There is no state to get stuck in here. */
+  pointer-events:auto;
   box-shadow:0 26px 70px rgba(0,0,0,.66);
 }
-body.portrait .p3d.flat.show{
-  opacity:1; visibility:visible; pointer-events:auto;
-  transition:opacity .45s ease, visibility 0s linear 0s;
-}
+/* The display toggle has to out-specify the panels' own ID rules. #spread
+   declares display:flex for its two facing pages, and an ID (1,0,0) beats three
+   classes (0,3,1) — so the flat `display:none` never applied to it, The Book
+   stayed permanently displayed on top of every other panel, and the card that
+   measured correct underneath it was simply covered. */
+body.portrait #sheet.flat, body.portrait #board.flat, body.portrait #spread.flat,
+body.portrait #card.flat, body.portrait #note.flat{ display:none; }
+body.portrait #sheet.flat.show, body.portrait #board.flat.show,
+body.portrait #spread.flat.show, body.portrait #card.flat.show,
+body.portrait #note.flat.show{ display:block; }
 /* Type is set for a real screen now rather than a projected surface, so the
    portrait sizes above (tuned for a 760px element seen at ~60% of a phone)
    are far too large here. Back to something a phone actually reads at. */
