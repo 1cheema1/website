@@ -267,7 +267,7 @@ let p = 0;
 let introDone = REDUCED_MOTION;
 let navLocked = true;
 
-const BASE_RATE = 0.040;        // timeline units/sec at pace 1.0
+const BASE_RATE = 0.020;        // timeline units/sec at pace 1.0
 // One scroll gesture — ANY speed, ANY length — starts a glide that keeps
 // moving at the constant BASE_RATE for this long. Magnitude of the wheel
 // delta is deliberately discarded; a hard flick and a gentle nudge produce

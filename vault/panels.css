@@ -164,17 +164,14 @@
 #note .nstatus.err{color:#a33a2a;}
 
 /* ── 5. FLANKING PHOTO (520 x 650) ──
-   Full colour (it was greyscale, which read as a stock placeholder), on a
-   cream mat inside a visible dark frame — matching the 3D brass frame mesh
-   sitting just behind it in world space. */
-#flank-photo{width:520px;height:650px;background:#141118;padding:20px;
-  box-shadow:inset 0 0 0 3px rgba(201,162,39,.55);}
-#flank-photo .mat{width:100%;height:100%;background:var(--paper);padding:18px 18px 0;
-  display:flex;flex-direction:column;}
-#flank-photo img{width:100%;height:calc(100% - 62px);object-fit:cover;object-position:center 20%;
-  display:block;filter:contrast(1.04) saturate(1.02);}
-#flank-photo .cap{height:62px;line-height:62px;font-family:var(--mono);font-size:19px;
-  letter-spacing:.22em;text-transform:uppercase;color:var(--ink2);text-align:center;}
+   A dark gallery frame, not a Polaroid: the cream mat and printed caption
+   clashed with the brushed-steel-and-gold vault, and the name is already in
+   the HUD. Photo fills the frame behind a thin gold hairline. */
+#flank-photo{width:520px;height:650px;background:#0a090c;padding:16px;
+  box-shadow:inset 0 0 0 1px rgba(201,162,39,.55),
+             inset 0 0 26px rgba(0,0,0,.85);}
+#flank-photo img{width:100%;height:100%;object-fit:cover;object-position:center 20%;
+  display:block;filter:contrast(1.05) saturate(1.02) brightness(.97);}
 
 /* ── 6. FLANKING SIGN (660 x 200) ── */
 #flank-sign{width:660px;height:200px;background:#0c0b0d;color:var(--gold2);
