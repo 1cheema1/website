@@ -61,6 +61,39 @@ if (new URLSearchParams(location.search).get('debug') === '1') {
   if (document.body) document.body.appendChild(DEBUG);
 }
 
+// ── ?diag=1 ───────────────────────────────────────────────────────
+// An on-device readout. Debugging a phone by proxy is guesswork, and "nothing
+// changed" can mean the code is wrong or the browser is serving a cached copy
+// from before it existed — these look identical from the outside. BUILD is
+// bumped on every deploy that changes behaviour, so if the number here is not
+// the current one, the page is stale and nothing else it says can be trusted.
+const BUILD = '2026-08-16-portrait-1';
+if (new URLSearchParams(location.search).get('diag') === '1') {
+  addEventListener('DOMContentLoaded', () => {
+    const d = document.createElement('div');
+    d.style.cssText = 'position:fixed;z-index:99999;left:8px;right:8px;top:8px;' +
+      'background:rgba(4,4,6,.94);color:#7dffa8;font:12px/1.7 ui-monospace,monospace;' +
+      'padding:12px 14px;border:1px solid #2c5c3c;white-space:pre-wrap;pointer-events:none;';
+    const upd = () => {
+      const sh = document.getElementById('sheet');
+      d.textContent =
+        'BUILD    ' + BUILD + '\n' +
+        'viewport ' + innerWidth + ' x ' + innerHeight +
+          '  aspect ' + (innerWidth / innerHeight).toFixed(3) + '\n' +
+        'portrait ' + document.body.classList.contains('portrait') +
+          '   (expect true on a phone)\n' +
+        'sheetBox ' + (sh ? sh.offsetWidth + ' x ' + sh.offsetHeight : '?') +
+          '   (expect 760 x 1180)\n' +
+        'navMuted ' + getComputedStyle(document.documentElement)
+          .getPropertyValue('--muted').trim() + '   (expect #6b6357)\n' +
+        'dpr      ' + devicePixelRatio + '   coarse ' +
+          matchMedia('(pointer: coarse)').matches;
+    };
+    upd(); setInterval(upd, 1000);
+    document.body.appendChild(d);
+  });
+}
+
 // ═══════════════════ renderers ═══════════════════
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
 // 2x DPR on a retina display means 4x the fragment work for a full-screen
