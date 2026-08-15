@@ -166,6 +166,30 @@ def main() -> int:
     pts = equity.iloc[:: max(1, len(equity) // 80)]
     spark = [round(float(v / equity.iloc[0]), 4) for v in pts]
 
+    # Per-holding series for the wall screens. These used to be synthetic noise
+    # baked into a canvas texture; the screens are real DOM now, so they can
+    # carry the actual last-quarter price action of the names actually held.
+    # 48 points is enough to read as a chart at the size these render.
+    screens = []
+    for sym in holdings[:8]:
+        if sym not in px.columns:
+            continue
+        s = px[sym].dropna().iloc[-63:]
+        if len(s) < 10:
+            continue
+        step_n = max(1, len(s) // 48)
+        pts_s = s.iloc[::step_n]
+        lo, hi = float(pts_s.min()), float(pts_s.max())
+        rng = (hi - lo) or 1.0
+        screens.append({
+            "symbol": sym,
+            # percent change across the window the sparkline actually shows
+            "pct": round((float(s.iloc[-1]) / float(s.iloc[0]) - 1.0) * 100, 2),
+            "last": round(float(s.iloc[-1]), 2),
+            # normalised 0..1 so the client can plot without knowing the scale
+            "spark": [round((float(v) - lo) / rng, 4) for v in pts_s],
+        })
+
     payload = {
         "generated_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "window": {"start": str(equity.index[0].date()), "end": str(equity.index[-1].date())},
@@ -175,6 +199,7 @@ def main() -> int:
         "benchmark": {"symbol": BENCHMARK, **bench_stats},
         "holdings": holdings[:12],
         "sparkline": spark,
+        "screens": screens,
         "caveat": (
             "Backtest over today's S&P 500 membership; not survivorship-adjusted. "
             "Recomputed nightly from adjusted closes. Not investment advice."
