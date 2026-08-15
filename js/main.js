@@ -97,8 +97,6 @@ if (new URLSearchParams(location.search).get('diag') === '1') {
           const cs = document.getElementById('css3d');
           const cd = cs && cs.firstElementChild
             ? cs.firstElementChild.getBoundingClientRect() : null;
-          const sz = T.renderer.getSize(new (T.renderer.domElement.constructor === Object
-            ? Object : Object)());
           const it = T.panels && T.panels.items && T.panels.items.sheet;
           const r = [];
           r.push('canvas   ' + Math.round(cv.width) + ' x ' + Math.round(cv.height) +
