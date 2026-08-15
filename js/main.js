@@ -354,6 +354,7 @@ function goToStation(idx) {
     onUpdate() { p = st.v; },
     onComplete() {
       travel = null;
+      AUDIO.stationTick();
       if (pending) { const d = pending; pending = 0; goToStation(stationIdx + d); }
       else if (keys.has('fwd')) goToStation(stationIdx + 1);
       else if (keys.has('back')) goToStation(stationIdx - 1);
@@ -583,9 +584,19 @@ if (LOCKED !== null || WANT_RESUME) {
     }
     return acc;
   };
-  tl.call(() => AUDIO.impactThunk(), null, beatTime(C.BEAT.impact));
-  tl.call(() => AUDIO.coinCascade(C.INTRO_PACING.find(x => x.key === 'gather').dur, 16), null, beatTime(C.BEAT.gather[0]));
+  const tImpact = beatTime(C.BEAT.impact);
+  // The swell has to START early enough to ARRIVE on the hit — that lead is
+  // what makes the impact feel authored instead of merely triggered.
+  tl.call(() => AUDIO.smashSwell(1.1), null, Math.max(0, tImpact - 1.1));
+  tl.call(() => AUDIO.preImpactSilence(0.26), null, Math.max(0, tImpact - 0.26));
+  tl.call(() => AUDIO.impactThunk(), null, tImpact);
+  tl.call(() => AUDIO.shardScatter(1.2, 26), null, tImpact + 0.02);
+  tl.call(() => AUDIO.coinCascade(C.INTRO_PACING.find(x => x.key === 'gather').dur, 18), null, beatTime(C.BEAT.gather[0]));
+  tl.call(() => AUDIO.coinSettle(0.15, -0.5), null, beatTime(C.BEAT.fall[1]));
+  tl.call(() => AUDIO.coinSettle(0.42, 0.6), null, beatTime(C.BEAT.fall[1]));
   tl.call(() => AUDIO.doorForge(), null, beatTime(C.BEAT.forge[0]));
+  tl.call(() => AUDIO.dialSpin(0.95), null, beatTime(C.BEAT.dial[0]));
+  tl.call(() => AUDIO.boltsThrow(6, 0.62), null, beatTime(C.BEAT.bolts[0]));
 
   breakBtn.addEventListener('click', startSmash);
   // pressing a nav key with the bank still intact means "get on with it"
@@ -598,6 +609,7 @@ if (LOCKED !== null || WANT_RESUME) {
     tl.kill();
     p = C.INTRO_END;
     breakBtn.classList.add('hide');
+    AUDIO.uiClick();
     handoff();
   });
 }
@@ -829,7 +841,7 @@ if (DEBUG) window.__panelHit = panelTargetAt;
 
 function activate(el) {
   if (el.id === 'resumeBack') return closeResume();
-  if (el.dataset.act === 'resume') return openResume();
+  if (el.dataset.act === 'resume') { AUDIO.pageTurn(); return openResume(); }
 
   if (el.tagName === 'A') {
     const href = el.getAttribute('href') || '';
@@ -912,6 +924,8 @@ function frame(now) {
   panels.setResume(resumeT <= 0 ? 0 : clamp01((resumeT - 0.45) / 0.4));
   panels.update(p, camera);
   applyMood(camera.position.z);
+  AUDIO.updateBeds(camera.position.z);
+  AUDIO.setClock(camera.position.z > 17.0 && camera.position.z < 22.5);
   updateHud(p);
 
   if (bokehPass) {
