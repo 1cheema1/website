@@ -90,6 +90,15 @@ export function buildPanels(scene, cssScene, M, stops, market) {
     if (FLAT) {
       // No CSS3DObject, no hole. The element keeps its own layout and is
       // positioned by CSS; update() just toggles a class.
+      //
+      // It must also LEAVE #panelsrc. That holder is position:fixed, and WebKit
+      // creates a stacking context for fixed elements while Chrome does not —
+      // so on iOS every card's z-index was scoped inside a container that
+      // itself paints below the opaque canvas, and the panel rendered behind
+      // the scene. Correct box, correct z-index, correct everything, invisible.
+      // Moving it to <body> puts it back in the root stacking context, where
+      // z-index:6 means what it says.
+      document.body.appendChild(el);
       el.classList.add('flat');
       items[key] = { el, flat: true, c, obj: null, hole: null };
       continue;

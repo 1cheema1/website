@@ -67,7 +67,7 @@ if (new URLSearchParams(location.search).get('debug') === '1') {
 // from before it existed — these look identical from the outside. BUILD is
 // bumped on every deploy that changes behaviour, so if the number here is not
 // the current one, the page is stale and nothing else it says can be trusted.
-const BUILD = '2026-08-16-specificity-8';
+const BUILD = '2026-08-16-stacking-9';
 if (new URLSearchParams(location.search).get('diag') === '1') {
   // Attach immediately if the body already exists, and via the event if not.
   // main.js is a module with top-level await, so it can resume after
@@ -102,9 +102,14 @@ if (new URLSearchParams(location.search).get('diag') === '1') {
           const it = T.panels && T.panels.items && T.panels.items.sheet;
           if (it && !it.obj) {
             const rr = it.el.getBoundingClientRect();
+            const pid = it.el.parentElement ? (it.el.parentElement.id || it.el.parentElement.tagName) : '?';
+            const mid = document.elementFromPoint(
+              Math.round(rr.left + rr.width / 2), Math.round(rr.top + rr.height / 2));
             return 'sheetCard ' + Math.round(rr.width) + ' x ' + Math.round(rr.height) +
                    ' @ ' + Math.round(rr.left) + ',' + Math.round(rr.top) +
-                   '\nshown    ' + it.el.classList.contains('show');
+                   '\nparent   ' + pid + '   (expect BODY)' +
+                   '\nshown    ' + it.el.classList.contains('show') +
+                   '\nontop    ' + (mid ? (mid.tagName + (mid.id ? '#' + mid.id : '')) : 'null');
           }
           const r = [];
           r.push('canvas   ' + Math.round(cv.width) + ' x ' + Math.round(cv.height) +
