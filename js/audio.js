@@ -98,6 +98,23 @@ function ensure() {
   duck.connect(comp).connect(shelf).connect(master).connect(ctx.destination);
 }
 
+// 42 · where the listener is. main.js pushes the camera each frame so voices
+// given a world position pan and attenuate relative to it, rather than to a
+// hand-picked constant. Kept as a plain scalar projection onto the camera's
+// right vector: a full PannerNode per voice is a lot of graph for a scene
+// where everything of interest sits within a few metres of the axis.
+let listenX = 0, listenZ = 0, rightX = 1, rightZ = 0;
+export function setListener(px, pz, rx, rz) {
+  listenX = px; listenZ = pz; rightX = rx; rightZ = rz;
+}
+// world (x,z) -> pan in [-1,1]
+export function panAt(x, z) {
+  const dx = x - listenX, dz = z - listenZ;
+  const d = Math.hypot(dx, dz) || 1;
+  const p = (dx * rightX + dz * rightZ) / d;
+  return Math.max(-1, Math.min(1, p));
+}
+
 // Voice helper: returns the node a source should connect to, wiring both the
 // dry path and a reverb send at `send` (0..1).
 function bus(send = 0.30, pan = 0) {
@@ -490,7 +507,10 @@ export function coinCascade(dur = 1.4, count = 18) {
   for (let i = 0; i < count; i++) {
     const delay = (i / count) * dur + rnd(0, 0.04);
     const f = scale[(Math.random() * scale.length) | 0] * (Math.random() < 0.3 ? 2 : 1);
-    metalTick(delay, f, rnd(0.06, 0.15), rnd(-0.85, 0.85));
+    // scattered across the door's face in world space, not at random pans, so
+    // the cascade sweeps the way the coins actually fly
+    const a = (i / count) * Math.PI * 2;
+    metalTick(delay, f, rnd(0.06, 0.15), panAt(Math.cos(a) * 1.1, 0.05));
   }
 }
 
@@ -560,7 +580,9 @@ export function boltsThrow(count = 6, spread = 0.62) {
   if (muted || !ctx) return;
   for (let i = 0; i < count; i++) {
     const d = (i / count) * spread;
-    const pan = Math.cos((i / count) * Math.PI * 2) * 0.7;
+    // each bolt sits where it is on the rim
+    const a = (i / count) * Math.PI * 2;
+    const pan = panAt(Math.cos(a) * 1.25, 0.0);
     const b = bus(0.5, pan);
     const t = now() + d;
     const o = ctx.createOscillator(); o.type = 'square';

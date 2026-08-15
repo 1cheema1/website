@@ -263,6 +263,9 @@ export function buildIntro(scene, M, glowSprite, emis) {
   door.position.set(1.30, 0, 0);
   hinge.add(door);
   const bolts = [], dial = new THREE.Group();
+  // hoisted to buildIntro scope: idle() drives these every frame, and
+  // declaring them inside the door-build block put them out of its reach
+  const gears = [];
   {
     const steel = M.steel, dark = M.darkSteel, gold = M.gold;
 
@@ -280,7 +283,7 @@ export function buildIntro(scene, M, glowSprite, emis) {
       const a = (i / 8) * Math.PI * 2 + Math.PI / 8;
       const rib = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.90, 0.028), dark);
       rib.position.set(Math.cos(a) * 0.70, Math.sin(a) * 0.70, -0.163);
-      rib.rotation.z = a - Math.PI / 2; door.add(rib);
+      rib.rotation.z = a - Math.PI / 2; rib.userData.rib = true; door.add(rib);
     }
     // outer bevel ring
     const bev = new THREE.Mesh(new THREE.TorusGeometry(VAULT_R - 0.03, 0.055, 12, 84), gold);
@@ -298,12 +301,60 @@ export function buildIntro(scene, M, glowSprite, emis) {
     );
     engraveRing.rotation.y = Math.PI; engraveRing.position.z = -0.17; door.add(engraveRing);
 
+    // ── 18 · time-lock window ──────────────────────────────────
+    // Real vault doors carry a time lock above the dial, and it gives the face
+    // something to look at other than a gold disc. Thick glass over a recessed
+    // cavity with gears turning behind it — the gears are what make the door
+    // read as a machine rather than a decorated slab.
+    {
+      const win = new THREE.Group();
+      win.position.set(0, 0.66, 0);
+      win.userData.dialStage = true;
+      door.add(win);
+
+      // cavity: a short open cylinder, dark inside so the gears read
+      const cav = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.175, 0.175, 0.075, 40, 1, true),
+        new THREE.MeshStandardMaterial({ color: 0x14161a, roughness: 0.85, metalness: 0.2, side: THREE.BackSide }));
+      cav.rotation.x = Math.PI / 2; cav.position.z = -0.135; win.add(cav);
+      const backPlate = new THREE.Mesh(new THREE.CircleGeometry(0.175, 40),
+        new THREE.MeshStandardMaterial({ color: 0x0d0f12, roughness: 0.9 }));
+      backPlate.position.z = -0.098; backPlate.rotation.y = Math.PI; win.add(backPlate);
+
+      // three brass gears, different sizes and rates
+      const gearMat = new THREE.MeshStandardMaterial({ color: 0xa8842f, metalness: 0.95, roughness: 0.34, envMapIntensity: 1.2 });
+      for (const [gx, gy, gr, teeth] of [[-0.045, 0.020, 0.075, 14], [0.058, -0.012, 0.055, 11], [0.010, -0.072, 0.042, 9]]) {
+        const g = new THREE.Group();
+        const body = new THREE.Mesh(new THREE.CylinderGeometry(gr, gr, 0.016, 22), gearMat);
+        body.rotation.x = Math.PI / 2; g.add(body);
+        const tg = [];
+        for (let i = 0; i < teeth; i++) {
+          const a = (i / teeth) * Math.PI * 2;
+          const t = new THREE.BoxGeometry(0.016, 0.020, 0.015);
+          t.rotateZ(a); t.translate(Math.cos(a) * (gr + 0.008), Math.sin(a) * (gr + 0.008), 0);
+          tg.push(t);
+        }
+        g.add(new THREE.Mesh(mergeGeometries(tg), gearMat));
+        g.position.set(gx, gy, -0.118);
+        win.add(g);
+        gears.push(g);
+      }
+
+      // glass, and a brass bezel to seat it
+      const glass = new THREE.Mesh(new THREE.CircleGeometry(0.172, 40),
+        new THREE.MeshPhysicalMaterial({ color: 0xbfd6e6, roughness: 0.06, metalness: 0,
+          transparent: true, opacity: 0.26, envMapIntensity: 1.8, side: THREE.DoubleSide }));
+      glass.position.z = -0.176; glass.rotation.y = Math.PI; win.add(glass);
+      const bezel = new THREE.Mesh(new THREE.TorusGeometry(0.180, 0.020, 10, 44), gold);
+      bezel.position.z = -0.178; win.add(bezel);
+    }
+
     // hinge arms
     for (const y of [-0.72, 0.72]) {
       const arm = new THREE.Mesh(new THREE.BoxGeometry(0.30, 0.14, 0.14), dark);
-      arm.position.set(-1.22, y, 0); door.add(arm);
+      arm.position.set(-1.22, y, 0); arm.userData.rib = true; door.add(arm);
       const pin = new THREE.Mesh(new THREE.CylinderGeometry(0.058, 0.058, 0.34, 16), dark);
-      pin.position.set(-1.34, y, 0); door.add(pin);
+      pin.position.set(-1.34, y, 0); pin.userData.rib = true; door.add(pin);
     }
 
     // locking bolts around the rim
@@ -358,6 +409,21 @@ export function buildIntro(scene, M, glowSprite, emis) {
 
     door.traverse(o => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = true; } });
     hinge.visible = false;
+  }
+
+  // ── 28 · assembly groups ──────────────────────────────────────
+  // Partitioned after construction rather than threaded through it: the door
+  // is built by a long stretch of straight-line geometry code and tagging each
+  // mesh inline would bury the shape of it. Bolts and the dial already exist as
+  // collections; ribs and the time-lock carry a userData flag; the rest is rim.
+  const partsBolt = bolts.slice();
+  const partsDial = [dial];
+  const partsRib = [], partsRim = [];
+  for (const c of door.children) {
+    if (c === dial || partsBolt.includes(c)) continue;
+    if (c.userData && c.userData.dialStage) partsDial.push(c);
+    else if (c.userData && c.userData.rib) partsRib.push(c);
+    else partsRim.push(c);
   }
 
   // Blackout plate sealing the vault throat until the door exists.
@@ -438,10 +504,25 @@ export function buildIntro(scene, M, glowSprite, emis) {
   const cSlot = new THREE.Vector3(0, PIG.y + PR - 0.02, 0.045);
 
   // ── the update ────────────────────────────────────────────────
+  // 22 · idle motion. Driven off wall-clock rather than p, because the point
+  // is that the door is alive while the visitor is standing still and p is by
+  // definition not moving then.
+  function idle(p) {
+    const t = performance.now() * 0.001;
+    for (let i = 0; i < gears.length; i++) {
+      // alternating directions and coprime-ish rates, so the train never
+      // settles into a pattern that looks like a loop
+      gears[i].rotation.z = t * (0.55 + i * 0.37) * (i % 2 ? -1 : 1);
+    }
+    // the dial drifts a hair once it has come to rest
+    if (p > BEAT.dial[1]) dial.rotation.z += Math.sin(t * 0.28) * 0.00018;
+  }
+
   function update(p) {
     const active = p < INTRO_VISIBLE_UNTIL;
     G.visible = active;
     if (!active) return;
+    idle(p);
 
     const t0 = (p - BEAT.impact) / (BEAT.fall[1] - BEAT.impact);      // 0..1 across burst+fall
     const flight = Math.max(0, t0) * 1.05;                            // seconds
@@ -551,6 +632,29 @@ export function buildIntro(scene, M, glowSprite, emis) {
         blastLight.intensity = Math.pow(1 - sw, 3.0) * 60;
       } else {
         blastLight.intensity = 0;
+      }
+    }
+
+    // ---- 28 · the door assembles, part by part ----
+    // The coins fly into the rim and the door used to simply materialise as one
+    // object, which threw away the only causal link in the sequence. Each group
+    // now has its own slice of the forge window, ordered outside-in: rim, then
+    // ribs and spokes, then the dial, then the bolts. You watch the money
+    // become the door in the order the coins arrive.
+    {
+      const f = span(p, BEAT.forge);
+      const stage = (a, b) => sstep(clamp01((f - a) / (b - a)));
+      const sRim = stage(0.00, 0.34);
+      const sRib = stage(0.26, 0.62);
+      const sDial = stage(0.55, 0.86);
+      const sBolt = stage(0.78, 1.00);
+      for (const [grp, k] of [[partsRim, sRim], [partsRib, sRib], [partsDial, sDial], [partsBolt, sBolt]]) {
+        for (const o of grp) {
+          o.visible = k > 0.001;
+          const sc2 = 0.15 + 0.85 * k;
+          o.scale.setScalar(sc2);
+          if (o.material && o.material.transparent) o.material.opacity = k;
+        }
       }
     }
 

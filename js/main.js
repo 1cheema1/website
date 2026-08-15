@@ -1008,6 +1008,11 @@ function frame(now) {
   panels.update(p, camera);
   applyMood(camera.position.z);
   AUDIO.updateBeds(camera.position.z);
+  // hand the listener pose to the mixer so positioned voices pan correctly
+  {
+    const fwd = camera.getWorldDirection(new THREE.Vector3());
+    AUDIO.setListener(camera.position.x, camera.position.z, -fwd.z, fwd.x);
+  }
   // room life: keystrokes on the floor, an occasional page in the study
   {
     const z = camera.position.z;
@@ -1017,7 +1022,18 @@ function frame(now) {
   updateHud(p);
 
   if (bokehPass) {
-    bokehPass.uniforms.focus.value = Math.max(0.35, cPos.distanceTo(cTgt));
+    // 35 · rack focus. Normally focus tracks whatever the camera is reading.
+    // Across the forge it pulls off the pedestal and onto the far wall, so the
+    // door resolves out of a blur instead of simply appearing — the shift is
+    // what tells you where to look next.
+    let f = Math.max(0.35, cPos.distanceTo(cTgt));
+    if (p >= C.BEAT.fall[1] && p < C.BEAT.dial[1]) {
+      const k = sstep(clamp01((p - C.BEAT.fall[1]) / (C.BEAT.dial[1] - C.BEAT.fall[1])));
+      const near = Math.max(0.35, cPos.distanceTo(new THREE.Vector3(0, 1.35, 0.05)));
+      const far = Math.max(0.35, Math.abs(cPos.z - 0.0) + 0.6);
+      f = near + (far - near) * k;
+    }
+    bokehPass.uniforms.focus.value = f;
   }
   grainPass.uniforms.uTime.value = now * 0.001;
   grainPass.uniforms.uAmt.value = REDUCED_MOTION ? 0.4 : 1.0;
