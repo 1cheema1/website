@@ -70,9 +70,15 @@ body.has-cursor,body.has-cursor *{cursor:none !important;}
 #topnav .navtools button.muted{color:rgba(245,241,232,.35);}
 
 /* ── overlay chrome ── */
+/* The blend mode is on the two small corner labels, NOT on this container.
+   #hud is inset:0, so a difference blend here made the compositor blend the
+   ENTIRE viewport against the WebGL canvas on every frame the scene changed —
+   which is every frame. The labels occupy a few hundred square pixels between
+   them and look identical blended individually. */
 #hud{position:fixed;z-index:6;inset:0;pointer-events:none;
   font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;
-  color:rgba(245,241,232,.5);mix-blend-mode:difference;}
+  color:rgba(245,241,232,.5);}
+#hud .bl,#hud .br{mix-blend-mode:difference;}
 #hud .bl{position:absolute;bottom:26px;left:30px;}
 #hud .br{position:absolute;bottom:26px;right:30px;text-align:right;}
 #hud b{font-weight:500;color:rgba(245,241,232,.85);}
@@ -104,21 +110,34 @@ body.has-cursor,body.has-cursor *{cursor:none !important;}
 #titlecard.burst .tc-sub{transition:opacity .35s ease;opacity:0;}
 
 /* ── break the bank ── */
+/* The glow pulses via a pseudo-element's OPACITY, not by animating box-shadow
+   on the button itself. Animating box-shadow repaints the element every frame
+   for as long as it runs — and this button is only on screen before the smash,
+   which is exactly where the cursor felt worst. Opacity is composited, so the
+   pulse now costs nothing per frame. */
 #breakBtn{position:fixed;z-index:9;left:50%;bottom:66px;transform:translateX(-50%);
-  background:rgba(201,162,39,.10);border:1px solid var(--gold2);color:var(--gold2);
+  background:rgba(24,20,10,.72);border:1px solid var(--gold2);color:var(--gold2);
   font-family:var(--mono);font-size:11px;letter-spacing:.30em;text-transform:uppercase;
-  padding:15px 30px;cursor:pointer;backdrop-filter:blur(6px);
-  transition:opacity .5s ease,background .25s ease,color .25s ease;
-  animation:breathe 2.6s ease-in-out infinite;}
+  padding:15px 30px;cursor:pointer;
+  transition:opacity .5s ease,background .25s ease,color .25s ease;}
+#breakBtn::before{content:'';position:absolute;inset:-1px;pointer-events:none;
+  box-shadow:0 0 22px rgba(201,162,39,.42);opacity:0;
+  will-change:opacity;animation:breathe 2.6s ease-in-out infinite;}
 #breakBtn:hover{background:var(--gold2);color:#08070a;}
-#breakBtn.hide{opacity:0;pointer-events:none;animation:none;}
-@keyframes breathe{0%,100%{box-shadow:0 0 0 rgba(201,162,39,0);}50%{box-shadow:0 0 22px rgba(201,162,39,.42);}}
+#breakBtn.hide{opacity:0;pointer-events:none;}
+#breakBtn.hide::before{animation:none;opacity:0;}
+@keyframes breathe{0%,100%{opacity:0;}50%{opacity:1;}}
 
 /* ── skip intro ── */
-#skipIntro{position:fixed;z-index:8;right:30px;bottom:34px;background:rgba(8,7,10,.55);
+/* No backdrop-filter. Blurring the backdrop of an element sitting over a live
+   WebGL canvas makes the compositor re-filter that region every single frame,
+   and both this and the break button are only on screen during the opening —
+   the one place the cursor was reported as unusable. A solid tint reads the
+   same here and costs nothing. */
+#skipIntro{position:fixed;z-index:8;right:30px;bottom:34px;background:rgba(8,7,10,.78);
   border:1px solid rgba(245,241,232,.28);color:rgba(245,241,232,.82);font-family:var(--mono);
   font-size:9px;letter-spacing:.24em;text-transform:uppercase;padding:11px 18px;cursor:pointer;
-  backdrop-filter:blur(6px);transition:opacity .5s ease,border-color .2s ease;opacity:1;}
+  transition:opacity .5s ease,border-color .2s ease;opacity:1;}
 #skipIntro:hover{border-color:var(--gold2);color:#f5f1e8;}
 #skipIntro.hide{opacity:0;pointer-events:none;}
 

@@ -842,9 +842,11 @@ if (FINE_POINTER) {
   // frame, so this is the earliest the position can be set — deferring to rAF
   // costs a whole frame of latency and buys nothing.
   //
-  // pointerrawupdate where available: dispatched at the pointer's own polling
-  // rate rather than coalesced to the display's, so the ring tracks a high-rate
-  // mouse even when the renderer is behind.
+  // pointermove, NOT pointerrawupdate. Raw update fires at the pointer's polling
+  // rate — 125Hz to 1000Hz on a gaming mouse — and writing style.transform on
+  // every one floods the main thread with work the display cannot even show.
+  // That was an optimisation that made things worse. pointermove is coalesced
+  // to one event per frame, which is exactly the useful rate.
   //
   // The honest limit: a DOM ring is painted by the main thread, so during a
   // 40ms frame it cannot move at all. The only real fix for that is frame time,
@@ -853,11 +855,7 @@ if (FINE_POINTER) {
     ptrX = e.clientX; ptrY = e.clientY;
     cursorEl.style.transform = `translate3d(${ptrX}px, ${ptrY}px, 0)`;
   };
-  if ('onpointerrawupdate' in window) {
-    addEventListener('pointerrawupdate', writeRing, { passive: true });
-  } else {
-    addEventListener('pointermove', writeRing, { passive: true });
-  }
+  addEventListener('pointermove', writeRing, { passive: true });
 } else {
   cursorEl.style.display = 'none';
 }
