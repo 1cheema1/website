@@ -37,7 +37,7 @@ export const DOORS = [
 const carrier = (o) => ({ ...o, h: o.w * o.el[1] / o.el[0] });
 
 export const CARRIER = {
-  sheet:  carrier({ room: 'office',  el: [1120, 700], w: 0.50, pos: [0, 0.8137, 4.26], elev: 72 * D, fitH: 0.62, fitW: 0.76 }),
+  sheet:  carrier({ room: 'office',  el: [1120, 700], w: 0.50, pos: [0, 0.8137, 4.26], elev: 72 * D, fitH: 0.72, fitW: 0.84 }),
   board:  carrier({ room: 'trading', el: [1240, 700], w: 2.60, pos: [0, 1.7500, 15.83], elev: 0 * D, fitH: 0.66, fitW: 0.80 }),
   spread: carrier({ room: 'study',   el: [1080, 700], w: 0.46, pos: [0, 1.0010, 20.15], elev: 33.7 * D, fitH: 0.66, fitW: 0.80 }),
   card:   carrier({ room: 'rooftop', el: [1160, 660], w: 0.42, pos: [0, 0.8673, 27.10], elev: 12 * D, fitH: 0.58, fitW: 0.80 }),

@@ -30,7 +30,11 @@
 #sheet .doc{text-align:right;font-family:var(--mono);font-size:10.5px;
   letter-spacing:.18em;text-transform:uppercase;color:var(--muted);line-height:1.9;}
 #sheet .doc b{display:block;color:var(--ink);font-size:16px;letter-spacing:.2em;font-weight:500;}
-#sheet .body{display:grid;grid-template-columns:1fr 1fr;gap:16px 36px;margin-top:16px;}
+#sheet .body{display:grid;grid-template-columns:1fr 1fr;gap:16px 36px;margin-top:16px;
+  /* Space reserved for the absolutely-positioned .foot below. The footer is
+     pinned, so without this the last bullet can run underneath it on any
+     machine whose font metrics render a line or two taller than mine. */
+  padding-bottom:52px;}
 #sheet .rt{display:flex;justify-content:space-between;align-items:baseline;
   border-bottom:1px solid var(--rule);padding-bottom:4px;}
 #sheet .rt em{font-family:var(--serif);font-style:normal;font-size:23px;}
@@ -58,7 +62,8 @@
 #board .bh .r{font-size:12.5px;letter-spacing:.24em;color:#c9a227;text-transform:uppercase;}
 /* fixed columns: $ROBOADVISOR.PY is the widest ticker and was
    colliding with the description cell under auto layout */
-#board table{width:100%;border-collapse:collapse;margin-top:14px;table-layout:fixed;}
+#board table{width:100%;border-collapse:collapse;margin-top:14px;table-layout:fixed;
+  margin-bottom:44px;}
 #board col.c1{width:196px;} #board col.c3{width:210px;} #board col.c4{width:106px;}
 #board th{font-size:11px;letter-spacing:.22em;text-transform:uppercase;
   color:#6d7683;text-align:left;padding:0 0 10px;font-weight:400;
@@ -83,7 +88,7 @@
 /* ── 3. STUDY BOOK SPREAD (1080 x 700) ── */
 #spread{width:1080px;height:700px;display:flex;background:var(--paper2);color:var(--ink);
   font-family:var(--sans);}
-#spread .pg{flex:1;padding:40px 42px;position:relative;}
+#spread .pg{flex:1;padding:40px 42px 46px;position:relative;}
 #spread .pg.l{box-shadow:inset -22px 0 28px -22px rgba(60,50,30,.42);}
 #spread .pg.r{box-shadow:inset 22px 0 28px -22px rgba(60,50,30,.42);}
 #spread .gutter{width:3px;background:linear-gradient(90deg,rgba(80,66,40,.30),rgba(80,66,40,.06),rgba(80,66,40,.30));}
