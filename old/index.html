@@ -1,0 +1,1225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Umer Cheema | Portfolio</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#0a0a0a;--bg2:#0e0e0e;--bg3:#141414;
+  --amber:#ff9900;--amber-dim:rgba(255,153,0,0.3);--amber-faint:rgba(255,153,0,0.08);
+  --green:#00cc66;--green-dim:rgba(0,204,102,0.3);
+  --red:#ff4444;--red-dim:rgba(255,68,68,0.3);
+  --text:#cccccc;--text-dim:#666666;
+  --border:rgba(255,153,0,0.15);
+  --font:'JetBrains Mono',monospace;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;line-height:1.6;overflow-x:hidden;}
+
+/* Scanlines */
+body::after{content:'';position:fixed;inset:0;z-index:9999;pointer-events:none;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.15) 2px,rgba(0,0,0,0.15) 4px);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:6px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:var(--amber-dim);border-radius:0;}
+
+/* ── BOOT SEQUENCE ── */
+#boot-screen{position:fixed;inset:0;z-index:10000;background:var(--bg);display:flex;flex-direction:row;align-items:center;justify-content:center;padding:10% 8%;gap:60px;transition:opacity 0.4s ease;}
+#boot-screen.hidden{opacity:0;pointer-events:none;}
+#boot-log{font-size:11px;color:var(--green);line-height:1.8;flex-shrink:0;}
+#boot-log .line{opacity:0;transform:translateY(4px);transition:all 0.25s ease;}
+#boot-log .line.show{opacity:1;transform:translateY(0);}
+#boot-graph{flex:1;max-width:420px;min-width:200px;height:220px;position:relative;opacity:0;transition:opacity 0.5s ease 0.2s;}
+#boot-graph.show{opacity:1;}
+#boot-graph svg{width:100%;height:100%;}
+#boot-graph .graph-line{stroke:var(--green);stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round;}
+#boot-graph .graph-fill{fill:url(#bootGrad);opacity:0.15;}
+#boot-graph .graph-grid line{stroke:var(--border);stroke-width:0.5;opacity:0.3;}
+#boot-graph .graph-label{font-size:9px;fill:var(--green);opacity:0.5;font-family:'JetBrains Mono',monospace;}
+#boot-graph .graph-title{font-size:10px;fill:var(--amber);font-family:'JetBrains Mono',monospace;letter-spacing:1px;}
+#boot-graph .graph-axis{stroke:var(--green);stroke-width:0.5;opacity:0.3;}
+@media(max-width:768px){
+  #boot-screen{flex-direction:column;gap:24px;padding:10% 10%;}
+  #boot-graph{max-width:100%;height:160px;}
+}
+
+/* ── LAYOUT ── */
+#app{display:none;flex-direction:column;min-height:100vh;}
+#app.booted{display:flex;}
+
+/* ── HEADER ── */
+#header{display:flex;align-items:center;justify-content:space-between;padding:8px 16px;border-bottom:1px solid var(--border);background:var(--bg);position:sticky;top:0;z-index:100;min-height:36px;flex-shrink:0;}
+#header .brand{font-size:10px;letter-spacing:2px;color:var(--amber);text-transform:uppercase;white-space:nowrap;font-weight:600;}
+#ticker-wrap{flex:1;overflow:hidden;margin:0 24px;position:relative;height:16px;}
+#ticker-wrap::before,#ticker-wrap::after{content:'';position:absolute;top:0;bottom:0;width:40px;z-index:2;}
+#ticker-wrap::before{left:0;background:linear-gradient(90deg,var(--bg),transparent);}
+#ticker-wrap::after{right:0;background:linear-gradient(270deg,var(--bg),transparent);}
+#ticker{display:flex;gap:32px;animation:tickerScroll 18s linear infinite;white-space:nowrap;font-size:11px;position:absolute;top:0;}
+@keyframes tickerScroll{0%{transform:translateX(0);}100%{transform:translateX(-50%);}}
+.tick-item{display:inline-flex;gap:6px;align-items:center;}
+.tick-sym{color:var(--amber);font-weight:600;}
+.tick-price{color:var(--text);}
+.tick-up{color:var(--green);}
+.tick-down{color:var(--red);}
+.tick-special{color:var(--amber);font-weight:600;letter-spacing:1px;}
+#clock{font-size:11px;color:var(--amber);white-space:nowrap;font-variant-numeric:tabular-nums;}
+
+/* ── NAV ── */
+#nav{display:flex;border-bottom:1px solid var(--border);background:var(--bg2);flex-shrink:0;}
+.nav-btn{flex:1;padding:8px 12px;text-align:center;font-family:var(--font);font-size:11px;letter-spacing:1px;color:var(--text-dim);background:transparent;border:none;border-right:1px solid var(--border);cursor:pointer;transition:all 0.15s ease;text-transform:uppercase;}
+.nav-btn:last-child{border-right:none;}
+.nav-btn:hover{color:var(--text);background:var(--amber-faint);}
+.nav-btn.active{color:var(--bg);background:#ffaa22;font-weight:600;}
+.nav-btn .key{font-weight:700;margin-right:4px;font-size:10px;}
+
+/* ── MAIN ── */
+#main{flex:1;padding:24px;overflow-y:auto;display:flex;flex-direction:column;}
+.panel{display:none;}
+.panel.active{display:flex;flex-direction:column;flex:1;animation:panelIn 0.15s ease;}
+@keyframes panelIn{0%{opacity:0;}100%{opacity:1;}}
+
+/* ── PANELS GRID ── */
+.panel-grid{display:grid;grid-template-columns:1.2fr 1fr;gap:16px;}
+.panel-box{border:1px solid var(--border);padding:20px;background:var(--bg2);position:relative;}
+.panel-box .box-title{font-size:10px;letter-spacing:2px;color:var(--amber);text-transform:uppercase;margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid var(--border);font-weight:600;}
+.panel-box.full{grid-column:1/-1;}
+
+/* ── TEXT STYLES ── */
+.h1{font-size:22px;font-weight:700;color:var(--amber);letter-spacing:2px;}
+.h2{font-size:14px;font-weight:600;color:var(--amber);letter-spacing:1px;margin:16px 0 8px;}
+.h3{font-size:12px;font-weight:600;color:var(--amber);letter-spacing:1px;margin:12px 0 6px;}
+.dim{color:var(--text-dim);}
+.amber{color:var(--amber);}
+.green{color:var(--green);}
+.red{color:var(--red);}
+.tag{display:inline-block;border:1px solid var(--amber-dim);color:var(--amber);font-size:10px;padding:1px 6px;margin:2px 2px;letter-spacing:0.5px;}
+.tag.green-tag{border-color:var(--green-dim);color:var(--green);}
+.sep{border:none;border-top:1px solid var(--border);margin:12px 0;}
+.label{font-size:10px;letter-spacing:2px;color:var(--text-dim);text-transform:uppercase;}
+.blink{animation:blink 1s step-end infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:0;}}
+.status-badge{display:inline-block;border:1px solid var(--green);color:var(--green);font-size:10px;padding:2px 8px;letter-spacing:1px;animation:statusPulse 2s ease-in-out infinite;}
+@keyframes statusPulse{0%,100%{border-color:var(--green);box-shadow:0 0 0 rgba(0,204,102,0);}50%{border-color:var(--green);box-shadow:0 0 8px rgba(0,204,102,0.15);}}
+
+
+
+
+/* ── OVERVIEW ── */
+.profile-header{display:flex;align-items:center;gap:24px;margin-bottom:12px;}
+.profile-photo-wrap{position:relative;flex-shrink:0;z-index:10000;margin-left:24px;}
+.profile-photo-wrap::before{content:'';position:absolute;inset:-16px;border-radius:50%;background:radial-gradient(circle,rgba(255,153,0,0.12) 0%,transparent 70%);z-index:0;}
+.profile-photo{width:300px;height:300px;border-radius:50%;border:2px solid var(--amber);object-fit:cover;box-shadow:0 0 24px rgba(255,153,0,0.2);display:block;position:relative;z-index:10001;}
+.profile-info{flex:1;padding-top:4px;}
+.bio-line{margin:4px 0;font-size:13px;}
+.bio-line .prompt{color:var(--amber);margin-right:6px;}
+.stat-row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.03);}
+.stat-row:last-child{border:none;}
+.stat-label{color:var(--text-dim);font-size:11px;letter-spacing:1px;}
+.stat-val{font-weight:600;font-size:12px;}
+.stat-val.up{color:var(--green);}
+.stat-val.down{color:var(--red);}
+
+/* Quick Stats Grid */
+.quick-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:12px;}
+.qs-cell{border:1px solid var(--border);padding:16px 12px;text-align:center;background:var(--bg);}
+.qs-val{font-size:24px;font-weight:700;color:var(--amber);margin-bottom:6px;}
+.qs-label{font-size:8px;letter-spacing:1.5px;color:var(--text-dim);text-transform:uppercase;}
+
+/* Tech Stack Pills */
+.tech-pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+.tech-pill{border:1px solid var(--amber-dim);color:var(--amber);font-size:10px;padding:3px 10px;letter-spacing:0.5px;transition:all 0.15s;}
+.tech-pill:hover{background:var(--amber);color:var(--bg);}
+.tech-pill.green-pill{border-color:var(--green-dim);color:var(--green);}
+.tech-pill.green-pill:hover{background:var(--green);color:var(--bg);}
+
+/* ── SNAKE GAME ── */
+#snake-box{margin-top:0;}
+#snake-wrap{display:flex;align-items:flex-start;gap:12px;margin-top:6px;}
+#snake-canvas-wrap{position:relative;border:1px solid var(--amber-dim);background:#050505;flex:1;line-height:0;}
+#snake-canvas{display:block;width:100%;height:auto;}
+#snake-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#050505;z-index:2;transition:opacity 0.2s;gap:0;line-height:normal;}
+#snake-overlay.hidden{opacity:0;pointer-events:none;}
+#snake-overlay .snake-prompt{color:var(--amber);font-size:11px;font-weight:700;letter-spacing:2px;margin-bottom:8px;}
+#snake-overlay .snake-sub{color:var(--text-dim);font-size:9px;letter-spacing:1px;margin-top:8px;}
+#snake-overlay .snake-score-final{color:var(--green);font-size:14px;font-weight:700;}
+#snake-info{display:flex;flex-direction:column;gap:6px;font-size:10px;color:var(--text-dim);letter-spacing:0.5px;width:140px;flex-shrink:0;}
+#snake-info .snake-stat{border:1px solid var(--border);padding:10px;text-align:center;background:var(--bg);}
+#snake-info .snake-stat-val{font-size:20px;font-weight:700;color:var(--green);margin-bottom:4px;}
+#snake-info .snake-stat-label{font-size:8px;letter-spacing:1.5px;color:var(--text-dim);text-transform:uppercase;}
+#snake-info .snake-controls{border:1px solid var(--border);padding:8px 10px;background:var(--bg);line-height:1.8;font-size:9px;}
+#snake-info .snake-key{display:inline-block;border:1px solid var(--amber-dim);color:var(--amber);padding:1px 6px;font-size:9px;margin:0 2px;font-family:'JetBrains Mono',monospace;}
+@media(max-width:768px){
+  #snake-wrap{flex-direction:column;align-items:center;}
+  #snake-info{flex-direction:row;flex-wrap:wrap;justify-content:center;}
+}
+
+/* ── RESEARCH ── */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+.dashed-box{border:1px dashed var(--amber-dim);padding:18px;background:var(--bg);margin:8px 0;}
+.dashed-box .dashed-title{font-size:10px;letter-spacing:2px;color:var(--amber);text-transform:uppercase;margin-bottom:10px;font-weight:600;}
+.dashed-box p,.dashed-box li{font-size:12px;color:var(--text);line-height:1.7;margin:4px 0;}
+.dashed-box ul{padding-left:16px;}
+
+/* ── POSITIONS ── */
+.pos-table{width:100%;border-collapse:collapse;}
+.pos-table th{text-align:left;font-size:10px;letter-spacing:1px;color:var(--text-dim);padding:6px 8px;border-bottom:1px solid var(--border);text-transform:uppercase;font-weight:400;}
+.pos-table td{padding:8px;border-bottom:1px solid rgba(255,255,255,0.02);font-size:12px;vertical-align:top;}
+.pos-table tr:hover td{background:rgba(255,153,0,0.08);}
+.pos-sym{color:var(--amber);font-weight:601;letter-spacing:0.5px;}
+.pos-desc{color:var(--text-dim);}
+.pos-stack{color:var(--text-dim);font-size:11px;}
+.view-btn{color:var(--amber);font-family:var(--font);font-size:11px;cursor:pointer;background:none;border:1px solid var(--amber-dim);padding:2px 8px;transition:all 0.15s;white-space:nowrap;}
+.view-btn:hover{background:var(--amber);color:#ffffff;border-color:#ffbb44;}
+
+/* ── CONTACT ── */
+.contact-row{display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.03);}
+.contact-label{width:100px;font-size:10px;letter-spacing:2px;color:var(--text-dim);text-transform:uppercase;}
+.contact-val{color:var(--amber);flex:1;}
+.contact-val a{color:var(--amber);text-decoration:none;}
+.contact-val a:hover{text-decoration:underline;}
+.contact-action{margin-left:auto;}
+.copy-btn,.open-btn{font-family:var(--font);font-size:10px;letter-spacing:1px;padding:3px 10px;cursor:pointer;border:1px solid var(--amber-dim);color:var(--amber);background:transparent;transition:all 0.15s;text-transform:uppercase;}
+.copy-btn:hover,.open-btn:hover{background:var(--amber);color:var(--bg);}
+.copy-btn.copied{border-color:var(--green);color:var(--green);}
+#msg-area{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--font);font-size:12px;padding:12px;resize:vertical;min-height:120px;outline:none;margin-top:8px;}
+#msg-area:focus{border-color:var(--amber);}
+#send-btn{margin-top:8px;font-family:var(--font);font-size:11px;letter-spacing:1px;padding:8px 24px;background:transparent;border:1px solid var(--amber);color:var(--amber);cursor:pointer;text-transform:uppercase;transition:all 0.15s;}
+#send-btn:hover{background:var(--amber);color:var(--bg);}
+
+/* ── MODAL ── */
+#modal-overlay{position:fixed;inset:0;z-index:5000;background:rgba(0,0,0,0.85);display:none;align-items:center;justify-content:center;backdrop-filter:blur(2px);}
+#modal-overlay.open{display:flex;}
+#modal{background:var(--bg);border:1px solid var(--amber-dim);max-width:680px;width:94%;max-height:80vh;overflow-y:auto;position:relative;transform:scale(0.95);opacity:0;transition:transform 0.15s ease,opacity 0.15s ease;}
+#modal-overlay.open #modal{transform:scale(1);opacity:1;}
+#modal-header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--bg2);}
+#modal-header .modal-title{font-size:11px;letter-spacing:2px;color:var(--amber);text-transform:uppercase;font-weight:600;}
+#modal-close{background:none;border:1px solid var(--amber-dim);color:var(--amber);font-family:var(--font);font-size:11px;padding:2px 8px;cursor:pointer;transition:all 0.15s;}
+#modal-close:hover{background:var(--amber);color:var(--bg);}
+#modal-body{padding:16px;}
+#modal-body p{margin:8px 0;font-size:12px;line-height:1.7;}
+#modal-body .modal-stat{display:flex;justify-content:space-between;padding:4px 0;font-size:11px;}
+#modal-body a{color:var(--amber);text-decoration:none;}
+#modal-body a:hover{text-decoration:underline;}
+#modal-body ul{padding-left:16px;margin:8px 0;}
+#modal-body li{margin:4px 0;font-size:12px;color:var(--text);line-height:1.6;}
+
+/* ── FOOTER ── */
+#footer{padding:8px 16px;border-top:1px solid var(--border);font-size:9px;letter-spacing:2px;color:var(--text-dim);text-align:center;text-transform:uppercase;flex-shrink:0;}
+
+/* ── MOBILE ── */
+@media(max-width:768px){
+  .panel-grid{grid-template-columns:1fr;}
+  #ticker-wrap{display:none;}
+  #header .brand{font-size:9px;}
+  .nav-btn{font-size:9px;padding:6px 4px;}
+  .nav-btn .key{display:none;}
+  .h1{font-size:18px;}
+  #main{padding:10px;}
+  .pos-table td,.pos-table th{padding:6px 4px;font-size:10px;}
+  .two-col{grid-template-columns:1fr;}
+  .three-col{grid-template-columns:1fr;}
+  .quick-stats{grid-template-columns:1fr 1fr;}
+  .profile-photo{width:200px;height:200px;}
+  .profile-header{flex-direction:column;align-items:center;text-align:center;}
+}
+</style>
+</head>
+<body>
+
+<!-- ══ BOOT SCREEN ══ -->
+<div id="boot-screen">
+  <div id="boot-log">
+    <div class="line">[SYS] Initializing UMER CHEEMA TERMINAL v1.0...</div>
+    <div class="line">[MEM] Allocating display buffer.......... OK</div>
+    <div class="line">[NET] Connecting to market data feed...... OK</div>
+    <div class="line">[GPU] Rendering engine initialized........ OK</div>
+    <div class="line">[DAT] Loading portfolio positions......... OK</div>
+    <div class="line">[DAT] Loading research coverage........... OK</div>
+    <div class="line">[SEC] Authentication bypassed............. OK</div>
+    <div class="line">[SYS] All systems operational. Welcome.</div>
+    <div class="line" style="margin-top:8px;color:var(--amber);font-weight:600;">TERMINAL READY_<span class="blink">█</span></div>
+  </div>
+  <div id="boot-graph">
+    <svg viewBox="0 0 400 200" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="bootGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#00cc66" stop-opacity="0.4"/>
+          <stop offset="100%" stop-color="#00cc66" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+      <!-- Grid lines -->
+      <g class="graph-grid">
+        <line x1="0" y1="40" x2="400" y2="40"/>
+        <line x1="0" y1="80" x2="400" y2="80"/>
+        <line x1="0" y1="120" x2="400" y2="120"/>
+        <line x1="0" y1="160" x2="400" y2="160"/>
+        <line x1="80" y1="0" x2="80" y2="200"/>
+        <line x1="160" y1="0" x2="160" y2="200"/>
+        <line x1="240" y1="0" x2="240" y2="200"/>
+        <line x1="320" y1="0" x2="320" y2="200"/>
+      </g>
+      <!-- Labels -->
+      <text class="graph-title" x="200" y="16" text-anchor="middle">PORTFOLIO INDEX</text>
+      <text class="graph-label" x="396" y="196" text-anchor="end">t</text>
+      <text class="graph-label" x="8" y="12">$</text>
+      <!-- Area fill (animated) -->
+      <path class="graph-fill" id="boot-graph-fill" d=""/>
+      <!-- Line (animated) -->
+      <path class="graph-line" id="boot-graph-line" d=""/>
+    </svg>
+  </div>
+</div>
+
+<!-- ══ APP ══ -->
+<div id="app">
+  <!-- HEADER -->
+  <div id="header">
+    <div class="brand">UMER CHEEMA TERMINAL <span class="dim">v1.0</span></div>
+    <div id="ticker-wrap">
+      <div id="ticker"></div>
+    </div>
+    <div id="clock"></div>
+  </div>
+
+  <!-- NAV -->
+  <nav id="nav">
+    <button class="nav-btn active" data-panel="overview" onclick="switchPanel('overview')"><span class="key">F1</span>OVERVIEW</button>
+    <button class="nav-btn" data-panel="research" onclick="switchPanel('research')"><span class="key">F2</span>RESEARCH</button>
+    <button class="nav-btn" data-panel="positions" onclick="switchPanel('positions')"><span class="key">F3</span>POSITIONS</button>
+    <button class="nav-btn" data-panel="contact" onclick="switchPanel('contact')"><span class="key">F4</span>CONTACT</button>
+    <a href="resume.pdf" target="_blank" class="nav-btn" style="margin-left:auto;text-decoration:none;color:var(--green);border-color:var(--green-dim);">📄 RESUME</a>
+  </nav>
+
+  <!-- MAIN -->
+  <div id="main">
+
+    <!-- ══════════════════════════════════ -->
+    <!-- F1 OVERVIEW                        -->
+    <!-- ══════════════════════════════════ -->
+    <div class="panel active" id="p-overview">
+      <div class="panel-grid">
+        <!-- LEFT: Profile -->
+        <div class="panel-box">
+          <div class="box-title">Profile Summary</div>
+          <div class="profile-header">
+            <div class="profile-photo-wrap">
+              <img src="photo.jpg" alt="Umer Cheema" class="profile-photo">
+            </div>
+            <div class="profile-info">
+              <div class="h1">> UMER CHEEMA</div>
+              <div style="margin:6px 0 4px;font-size:12px;color:var(--text-dim);">First-year CS · University of Waterloo · Co-op Program</div>
+              <div style="font-size:11px;color:var(--text-dim);margin-bottom:12px;">Seeking Summer 2026</div>
+              <div class="bio-line"><span class="prompt">></span> cs + finance at waterloo. probably sleeping.</div>
+              <div class="bio-line"><span class="prompt">></span> i like building things at the intersection of code and markets.</div>
+            </div>
+          </div>
+          <hr class="sep">
+          <div style="margin-top:12px;">
+            <div class="contact-row" style="border:none;padding:3px 0;">
+              <span class="label" style="width:80px;">STATUS</span>
+              <span class="status-badge">ACTIVELY SEEKING</span>
+            </div>
+            <div class="contact-row" style="border:none;padding:3px 0;">
+              <span class="label" style="width:80px;">LOCATION</span>
+              <span style="color:var(--text);">Waterloo, ON</span>
+            </div>
+            <div class="contact-row" style="border:none;padding:3px 0;">
+              <span class="label" style="width:80px;">EMAIL</span>
+              <a href="mailto:uicheema@uwaterloo.ca" style="color:var(--amber);text-decoration:none;font-size:12px;">uicheema@uwaterloo.ca</a>
+            </div>
+            <div class="contact-row" style="border:none;padding:3px 0;">
+              <span class="label" style="width:80px;">GITHUB</span>
+              <a href="https://github.com/1cheema1" target="_blank" style="color:var(--amber);text-decoration:none;font-size:12px;">github.com/1cheema1</a>
+            </div>
+            <div class="contact-row" style="border:none;padding:3px 0;">
+              <span class="label" style="width:80px;">LINKEDIN</span>
+              <a href="https://www.linkedin.com/in/umer-cheema-428701310/" target="_blank" style="color:var(--amber);text-decoration:none;font-size:12px;">linkedin.com/in/umer-cheema</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT: Quick Stats + Tech Stack -->
+        <div style="display:flex;flex-direction:column;gap:16px;">
+          <div class="panel-box" style="flex:1;">
+            <div class="box-title">Quick Stats</div>
+            <div class="quick-stats">
+              <div class="qs-cell">
+                <div class="qs-val">2</div>
+                <div class="qs-label">INTERNSHIPS</div>
+              </div>
+              <div class="qs-cell">
+                <div class="qs-val">6</div>
+                <div class="qs-label">PROJECTS</div>
+              </div>
+              <div class="qs-cell">
+                <div class="qs-val" style="color:var(--green);">1B</div>
+                <div class="qs-label">TERM</div>
+              </div>
+              <div class="qs-cell">
+                <div class="qs-val">18</div>
+                <div class="qs-label">AGE</div>
+              </div>
+              <div class="qs-cell">
+                <div class="qs-val" style="color:var(--green);">+4%</div>
+                <div class="qs-label">ALPHA VS SPY</div>
+              </div>
+              <div class="qs-cell">
+                <div class="qs-val" style="font-size:16px;">SWE · FIN</div>
+                <div class="qs-label">FOCUS</div>
+              </div>
+              <div class="qs-cell">
+                <div class="qs-val" style="font-size:13px;color:var(--green);">$SPUS $XEQT $CHPS</div>
+                <div class="qs-label">ETF PICKS</div>
+              </div>
+              <div class="qs-cell">
+                <div class="qs-val" style="font-size:14px;">BREAKING BAD</div>
+                <div class="qs-label">CURRENTLY WATCHING</div>
+              </div>
+              <div class="qs-cell">
+                <div class="qs-val" style="font-size:14px;">SAJNI</div>
+                <div class="qs-label">LISTENING · STRINGS</div>
+              </div>
+            </div>
+          </div>
+          <div class="panel-box">
+            <div class="box-title">Tech Stack</div>
+            <div class="tech-pills">
+              <span class="tech-pill">Python</span>
+              <span class="tech-pill">JavaScript</span>
+              <span class="tech-pill">TypeScript</span>
+              <span class="tech-pill">React</span>
+              <span class="tech-pill">Next.js</span>
+              <span class="tech-pill">Node.js</span>
+              <span class="tech-pill">SQL</span>
+              <span class="tech-pill green-pill">scikit-learn</span>
+              <span class="tech-pill green-pill">Pandas</span>
+              <span class="tech-pill">AWS</span>
+              <span class="tech-pill">Supabase</span>
+              <span class="tech-pill">Git</span>
+              <span class="tech-pill green-pill">Streamlit</span>
+              <span class="tech-pill">OpenAI API</span>
+              <span class="tech-pill">Gemini</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SNAKE GAME -->
+      <div class="panel-box full" id="snake-box">
+        <div class="box-title">TERMINAL ARCADE — SNAKE <span class="dim">// beat my high score--170 </span></div>
+        <div id="snake-wrap">
+          <div id="snake-canvas-wrap">
+            <canvas id="snake-canvas" width="400" height="160"></canvas>
+            <div id="snake-overlay">
+              <div class="snake-prompt">🐍 SNAKE</div>
+              <div class="snake-sub">PRESS SPACE TO START</div>
+            </div>
+          </div>
+          <div id="snake-info">
+            <div class="snake-stat">
+              <div class="snake-stat-val" id="snake-score">0</div>
+              <div class="snake-stat-label">SCORE</div>
+            </div>
+            <div class="snake-stat">
+              <div class="snake-stat-val" id="snake-best">0</div>
+              <div class="snake-stat-label">BEST</div>
+            </div>
+            <div class="snake-stat">
+              <div class="snake-stat-val" id="snake-speed-display">1</div>
+              <div class="snake-stat-label">LEVEL</div>
+            </div>
+            <div class="snake-controls">
+              <div style="color:var(--amber);font-size:9px;letter-spacing:1.5px;margin-bottom:6px;font-weight:600;">CONTROLS</div>
+              <span class="snake-key">↑</span><span class="snake-key">↓</span><span class="snake-key">←</span><span class="snake-key">→</span> Move<br>
+              <span class="snake-key">SPACE</span> Start / Restart<br>
+              <span class="snake-key">P</span> Pause
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════ -->
+    <!-- F2 RESEARCH                        -->
+    <!-- ══════════════════════════════════ -->
+    <div class="panel" id="p-research">
+      <div class="panel-box full">
+        <div class="box-title">Research Coverage — Umer Cheema</div>
+        <div style="font-size:10px;color:var(--text-dim);margin-bottom:20px;">LAST UPDATED: <span id="research-date"></span></div>
+
+        <!-- What I'm Into -->
+        <div class="h3">WHAT I'M INTO</div>
+        <hr class="sep">
+        <div class="two-col" style="margin:12px 0 24px;">
+          <div>
+            <p style="font-size:12px;color:var(--text);line-height:2.2;margin:4px 0;"><span class="amber">></span> Quantitative Finance</p>
+            <p style="font-size:12px;color:var(--text);line-height:2.2;margin:4px 0;"><span class="amber">></span> Machine Learning</p>
+            <p style="font-size:12px;color:var(--text);line-height:2.2;margin:4px 0;"><span class="amber">></span> Software Engineering</p>
+          </div>
+          <div>
+            <p style="font-size:12px;color:var(--text);line-height:2.2;margin:4px 0;"><span class="amber">></span> AI / LLMs</p>
+            <p style="font-size:12px;color:var(--text);line-height:2.2;margin:4px 0;"><span class="amber">></span> Sports Analytics</p>
+            <p style="font-size:12px;color:var(--text);line-height:2.2;margin:4px 0;"><span class="amber">></span> Hackathons</p>
+            <p style="font-size:12px;color:var(--text);line-height:2.2;margin:4px 0;"><span class="amber">></span> Cricket</p>
+            <p style="font-size:12px;color:var(--text);line-height:2.2;margin:4px 0;"><span class="amber">></span> Gym</p>
+            <p style="font-size:12px;color:var(--text);line-height:2.2;margin:4px 0;"><span class="amber">></span> Fortnite / CS:GO</p>
+            <p style="font-size:12px;color:var(--text);line-height:2.2;margin:4px 0;"><span class="amber">></span> Getting a co-op</p>
+            <p style="font-size:12px;color:var(--text);line-height:2.2;margin:4px 0;"><span class="amber">></span> Scoping ETFs for TFSA</p>
+          </div>
+        </div>
+
+        <!-- Currently -->
+        <div class="h3">CURRENTLY</div>
+        <hr class="sep">
+        <div class="three-col" style="margin:12px 0 24px;">
+          <div class="dashed-box">
+            <div class="dashed-title">Building</div>
+            <p><span class="amber">Debately</span> — AI debate platform with Gemini. Users argue positions, AI judges arguments in real-time.</p>
+            <p style="margin-top:6px;"><span class="dim">Stack:</span> Next.js · React · Gemini API</p>
+          </div>
+          <div class="dashed-box">
+            <div class="dashed-title">Reading</div>
+            <p><span class="amber">Advances in Financial ML</span> — Marcos López de Prado</p>
+            <p style="margin-top:6px;"><span class="amber">Designing Data-Intensive Applications</span> — Martin Kleppmann</p>
+            <p style="margin-top:6px;"><span class="amber">Green Eggs and Ham</span> — Dr. Seuss</p>
+            <p style="margin-top:6px;"><span class="amber">The Kite Runner</span> — Khaled Hosseini</p>
+          </div>
+          <div class="dashed-box">
+            <div class="dashed-title">Thinking About</div>
+            <p><span class="amber">></span> why most finance "AI" is just linear regression with extra steps</p>
+            <p><span class="amber">></span> whether i should learn rust</p>
+            <p><span class="amber">></span> when will i use the epsilon-delta definition of a limit</p>
+            <p><span class="amber">></span> where did the pakistan cricket team go wrong</p>
+            <p><span class="amber">></span> how much of my robo advisor's alpha is just the 2024 bull run</p>
+          </div>
+        </div>
+
+        <!-- Recent Thoughts -->
+        <div class="h3">CURRENT TAKES</div>
+        <hr class="sep">
+        <div class="dashed-box" style="margin-top:12px;">
+          <p><span class="amber">></span> linkedin slop posting needs to stop</p>
+          <p><span class="amber">></span> how do i stop doom scrolling??</p>
+          <p><span class="amber">></span> all 13x courses are annoying</p>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════ -->
+    <!-- F3 POSITIONS                       -->
+    <!-- ══════════════════════════════════ -->
+    <div class="panel" id="p-positions">
+      <div class="panel-box full">
+        <div class="box-title">Active Positions (Projects)</div>
+        <table class="pos-table">
+          <thead><tr><th>TICKER</th><th>DESCRIPTION</th><th>STACK</th><th>RETURN</th><th></th></tr></thead>
+          <tbody>
+            <tr>
+              <td><span class="pos-sym">$ROBOADVISOR.PY</span></td>
+              <td>ML Portfolio System — Ensemble + GMM + Kelly</td>
+              <td><span class="pos-stack">Python · scikit-learn · GMM</span></td>
+              <td><span class="green">+23% YTD</span></td>
+              <td><button class="view-btn" onclick="openModal('roboadvisor')">VIEW ↗</button></td>
+            </tr>
+            <tr>
+              <td><span class="pos-sym">$T20WC.PY</span></td>
+              <td>T20 World Cup Match Predictor — Elo + LogReg</td>
+              <td><span class="pos-stack">Python · Streamlit · Elo</span></td>
+              <td><span class="green">85% ACC</span></td>
+              <td><button class="view-btn" onclick="openModal('t20wc')">VIEW ↗</button></td>
+            </tr>
+            <tr>
+              <td><span class="pos-sym">$DEBATELY.AI</span></td>
+              <td>AI Debate Platform — Argue positions, AI judges</td>
+              <td><span class="pos-stack">Next.js · React · Gemini</span></td>
+              <td><span class="amber" style="font-weight:600;">WIP</span></td>
+              <td><button class="view-btn" onclick="openModal('debately')">VIEW ↗</button></td>
+            </tr>
+            <tr>
+              <td><span class="pos-sym">$CFM101.PY</span></td>
+              <td>Robo-Advising Challenge — Factor-Based Optimization</td>
+              <td><span class="pos-stack">Python · yfinance · NumPy</span></td>
+              <td><span class="green">+8.1% NET</span></td>
+              <td><button class="view-btn" onclick="openModal('cfm101')">VIEW ↗</button></td>
+            </tr>
+            <tr>
+              <td><span class="pos-sym">$SUBTRACK</span></td>
+              <td>Subscription Burn Rate Tracker — Analytics Dashboard</td>
+              <td><span class="pos-stack">Python · PostgreSQL · Vercel</span></td>
+              <td><span class="green">LIVE</span></td>
+              <td><button class="view-btn" onclick="openModal('subtrack')">VIEW ↗</button></td>
+            </tr>
+            <tr>
+              <td><span class="pos-sym">$ZARF</span></td>
+              <td>Pre-Nikah Clarity Platform — Hackathon Project</td>
+              <td><span class="pos-stack">Next.js · Prisma · Supabase</span></td>
+              <td><span class="green">LIVE</span></td>
+              <td><button class="view-btn" onclick="openModal('zarf')">VIEW ↗</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="panel-box full" style="margin-top:16px;">
+        <div class="box-title">Experience</div>
+        <table class="pos-table">
+          <thead><tr><th>TICKER</th><th>DESCRIPTION</th><th>STACK</th><th>PERIOD</th><th></th></tr></thead>
+          <tbody>
+            <tr>
+              <td><span class="pos-sym">$KROWNIE</span></td>
+              <td>Software Engineer Co-op — AI Interview Platform</td>
+              <td><span class="pos-stack">Node.js · OpenAI · AWS</span></td>
+              <td><span class="dim">2025</span></td>
+              <td><button class="view-btn" onclick="openModal('krownie')">VIEW ↗</button></td>
+            </tr>
+            <tr>
+              <td><span class="pos-sym">$KATSAH</span></td>
+              <td>Finance Co-op — Fintech Analytics</td>
+              <td><span class="pos-stack">SQL · Excel · Analytics</span></td>
+              <td><span class="dim">2024</span></td>
+              <td><button class="view-btn" onclick="openModal('katsah')">VIEW ↗</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════ -->
+    <!-- F4 CONTACT                         -->
+    <!-- ══════════════════════════════════ -->
+    <div class="panel" id="p-contact">
+      <div class="panel-box full">
+        <div class="box-title">Initiate Contact</div>
+        <div class="contact-row">
+          <span class="contact-label">EMAIL</span>
+          <span class="contact-val"><a href="mailto:uicheema@uwaterloo.ca">uicheema@uwaterloo.ca</a></span>
+          <span class="contact-action"><button class="copy-btn" onclick="copyEmail(this)">[ COPY ]</button></span>
+        </div>
+        <div class="contact-row">
+          <span class="contact-label">LINKEDIN</span>
+          <span class="contact-val"><a href="https://www.linkedin.com/in/umer-cheema-428701310/" target="_blank">linkedin.com/in/umer-cheema-428701310</a></span>
+          <span class="contact-action"><button class="open-btn" onclick="window.open('https://www.linkedin.com/in/umer-cheema-428701310/','_blank')">[ OPEN ↗ ]</button></span>
+        </div>
+        <div class="contact-row">
+          <span class="contact-label">GITHUB</span>
+          <span class="contact-val"><a href="https://github.com/1cheema1" target="_blank">github.com/1cheema1</a></span>
+          <span class="contact-action"><button class="open-btn" onclick="window.open('https://github.com/1cheema1','_blank')">[ OPEN ↗ ]</button></span>
+        </div>
+        <div class="contact-row">
+          <span class="contact-label">RESUME</span>
+          <span class="contact-val"><a href="resume.pdf" target="_blank">Umer_Cheema_Resume.pdf</a></span>
+          <span class="contact-action"><button class="open-btn" onclick="window.open('resume.pdf','_blank')">[ VIEW ↗ ]</button></span>
+        </div>
+        <hr class="sep" style="margin-top:20px;">
+        <div style="margin-top:12px;">
+          <div class="label" style="margin-bottom:8px;">> TYPE YOUR MESSAGE BELOW AND PRESS SEND</div>
+          <textarea id="msg-area" placeholder="Enter message..." spellcheck="false"></textarea>
+          <button id="send-btn" onclick="sendMessage()">[ SEND TRANSMISSION ]</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- FOOTER -->
+  <div id="footer">UMER CHEEMA TERMINAL · BUILD 2026 · ALL RIGHTS RESERVED</div>
+</div>
+
+<!-- ══ MODAL ══ -->
+<div id="modal-overlay">
+  <div id="modal">
+    <div id="modal-header">
+      <span class="modal-title" id="modal-title"></span>
+      <button id="modal-close" onclick="closeModal()">[ ESC ]</button>
+    </div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════
+// MODAL DATA
+// ═══════════════════════════════════════
+const modalData = {
+  roboadvisor: {
+    title: 'ROBOADVISOR.PY — POSITION DETAIL',
+    body: `
+      <p class="amber" style="font-size:14px;font-weight:600;">ML Robo-Advisory Dashboard</p>
+      <hr class="sep">
+      <p>ML-powered portfolio management system using an <strong style="color:var(--amber)">LR + Random Forest + GBM ensemble</strong> with GMM regime detection and Kelly criterion position sizing (fractional, capped at 25%).</p>
+      <div style="margin:16px 0;">
+        <div class="modal-stat"><span class="dim">METHODOLOGY</span><span>Walk-forward validated · 35 periods</span></div>
+        <div class="modal-stat"><span class="dim">YTD RETURN</span><span class="green">+23% vs +19% S&P 500</span></div>
+        <div class="modal-stat"><span class="dim">PORTFOLIO SIZE</span><span>$1M CAD simulated</span></div>
+        <div class="modal-stat"><span class="dim">REBALANCING</span><span>Monthly · Sector caps · Liquidity screens</span></div>
+        <div class="modal-stat"><span class="dim">RISK MGMT</span><span>5% stop-loss · Risk parity fallback in uncertain regimes</span></div>
+      </div>
+      <hr class="sep">
+      <p style="font-size:11px;">
+        <span class="tag">Python</span><span class="tag">scikit-learn</span><span class="tag">GMM</span><span class="tag">Kelly Criterion</span><span class="tag">Walk-Forward</span>
+      </p>
+      <hr class="sep">
+      <p>
+        <a href="https://robo-advisor-two.vercel.app" target="_blank">LIVE ↗</a> &nbsp;·&nbsp;
+        <a href="https://github.com/1cheema1/RoboAdvisor" target="_blank">GITHUB ↗</a>
+      </p>`
+  },
+  t20wc: {
+    title: 'T20WC.PY — POSITION DETAIL',
+    body: `
+      <p class="amber" style="font-size:14px;font-weight:600;">T20 World Cup 2026 Match Predictor</p>
+      <hr class="sep">
+      <p>Logistic regression model trained on <strong style="color:var(--amber)">10+ years of T20 international match data</strong> to predict match outcomes.</p>
+      <ul>
+        <li>Features: Elo ratings, rolling form (last 10 matches), head-to-head record, toss impact, venue factors</li>
+        <li>Blended 60/40 with official ICC T20I rankings for calibrated predictions</li>
+        <li>Interactive dashboard with live tournament bracket simulation</li>
+      </ul>
+      <hr class="sep">
+      <p style="font-size:11px;">
+        <span class="tag">Python</span><span class="tag">Logistic Regression</span><span class="tag">Elo Ratings</span><span class="tag">Streamlit</span>
+      </p>
+      <hr class="sep">
+      <p>
+        <a href="https://t20wc-one.vercel.app" target="_blank">LIVE ↗</a> &nbsp;·&nbsp;
+        <a href="https://github.com/1cheema1/t20wc" target="_blank">GITHUB ↗</a>
+      </p>`
+  },
+  debately: {
+    title: 'DEBATELY.AI — POSITION DETAIL',
+    body: `
+      <p class="amber" style="font-size:14px;font-weight:600;">Debately — AI Debate Platform</p>
+      <p class="dim" style="font-size:11px;">STATUS: WORK IN PROGRESS</p>
+      <hr class="sep">
+      <p>An AI-powered debate platform where users argue positions on topics and <strong style="color:var(--amber)">Gemini AI judges the arguments in real-time</strong>, providing scoring, counterpoints, and feedback.</p>
+      <ul>
+        <li>Real-time argument evaluation using Gemini API with structured prompting</li>
+        <li>Multi-round debate format with scoring rubric (logic, evidence, rhetoric)</li>
+        <li>Full-stack Next.js app with React frontend and server-side API routes</li>
+        <li>Topic selection, argument submission, AI-generated rebuttals and verdicts</li>
+      </ul>
+      <div style="margin:16px 0;">
+        <div class="modal-stat"><span class="dim">STATUS</span><span class="amber">In Development</span></div>
+        <div class="modal-stat"><span class="dim">STACK</span><span>Next.js · React · Gemini API</span></div>
+        <div class="modal-stat"><span class="dim">ARCHITECTURE</span><span>Server-side API routes · Streaming responses</span></div>
+      </div>
+      <hr class="sep">
+      <p style="font-size:11px;">
+        <span class="tag">Next.js</span><span class="tag">React</span><span class="tag">Gemini API</span><span class="tag">TypeScript</span><span class="tag">Tailwind</span>
+      </p>
+      <hr class="sep">
+      <p>
+        <a href="https://github.com/1cheema1/debately" target="_blank">GITHUB ↗</a>
+      </p>`
+  },
+  krownie: {
+    title: 'KROWNIE — EXPERIENCE DETAIL',
+    body: `
+      <p class="amber" style="font-size:14px;font-weight:600;">Krownie — Software Engineer Co-op</p>
+      <p class="dim" style="font-size:11px;">AI Interview Platform · 2024</p>
+      <hr class="sep">
+      <ul>
+        <li>Built <strong style="color:var(--amber)">real-time voice interview pipelines</strong> using OpenAI API + Retell AI for automated candidate screening</li>
+        <li>Architected serverless backend on AWS Lambda / S3 / Supabase for scalable interview processing</li>
+        <li>Achieved <strong class="green">35% accuracy improvement</strong> in response evaluation through iterative prompt engineering</li>
+        <li>Designed conversation flow state machines handling edge cases, interruptions, and multi-turn dialogue</li>
+      </ul>
+      <hr class="sep">
+      <p style="font-size:11px;">
+        <span class="tag">OpenAI API</span><span class="tag">Retell AI</span><span class="tag">AWS Lambda</span><span class="tag">S3</span><span class="tag">Supabase</span><span class="tag">Node.js</span>
+      </p>`
+  },
+  katsah: {
+    title: 'KATSAH — EXPERIENCE DETAIL',
+    body: `
+      <p class="amber" style="font-size:14px;font-weight:600;">Katsah — Finance Co-op</p>
+      <p class="dim" style="font-size:11px;">Fintech / Analytics · 2024</p>
+      <hr class="sep">
+      <ul>
+        <li>Performed <strong style="color:var(--amber)">SQL funnel analysis</strong> identifying drop-off points, recovering <strong class="green">50-60% of lost conversions</strong></li>
+        <li>Built Excel variance models for budget vs. actual analysis across departments</li>
+        <li>Created automated MoM KPI tracking dashboards for executive reporting</li>
+        <li>Analyzed user behavior data to inform product decisions and feature prioritization</li>
+      </ul>
+      <hr class="sep">
+      <p style="font-size:11px;">
+        <span class="tag">SQL</span><span class="tag">Excel</span><span class="tag">Data Analysis</span><span class="tag">KPI Dashboards</span>
+      </p>`
+  },
+  cfm101: {
+    title: 'CFM101.PY — POSITION DETAIL',
+    body: `
+      <p class="amber" style="font-size:14px;font-weight:600;">CFM 101 — Robo-Advising Challenge</p>
+      <p class="dim" style="font-size:11px;">Portfolio Optimization · Group Project</p>
+      <hr class="sep">
+      <p>Built a portfolio optimization system that deployed <strong style="color:var(--amber)">$1M CAD across North American equities</strong> using a fully systematic, rules-based approach.</p>
+      <div style="margin:16px 0;">
+        <div class="modal-stat"><span class="dim">METHODOLOGY</span><span>Four-factor scoring · Monte Carlo optimization</span></div>
+        <div class="modal-stat"><span class="dim">FACTORS</span><span>Momentum · Volatility · SMA-200 · RSI (14-day)</span></div>
+        <div class="modal-stat"><span class="dim">OPTIMIZATION</span><span>100 Monte Carlo trials · Max Sharpe ratio</span></div>
+        <div class="modal-stat"><span class="dim">CONSTRAINTS</span><span>40% sector cap · 15% stock cap · Liquidity screen</span></div>
+        <div class="modal-stat"><span class="dim">COSTS</span><span>$0.001/share · Max $2.15 CAD/trade</span></div>
+      </div>
+      <hr class="sep">
+      <div style="margin:12px 0;">
+        <div class="modal-stat"><span class="dim">PORTFOLIO VALUE</span><span class="green">$1,081,247.97 CAD</span></div>
+        <div class="modal-stat"><span class="dim">NET RETURN</span><span class="green">+8.1%</span></div>
+        <div class="modal-stat"><span class="dim">TOTAL FEES</span><span>$10.71 CAD</span></div>
+        <div class="modal-stat"><span class="dim">POSITIONS</span><span>15 stocks</span></div>
+      </div>
+      <hr class="sep">
+      <p class="dim" style="font-size:10px;letter-spacing:1px;margin-bottom:6px;">TOP HOLDINGS</p>
+      <p style="font-size:11px;">MO 15.26% · PM 14.09% · BK 8.24% · LMT 7.75% · RY.TO 6.73% · CAT 6.63%</p>
+      <hr class="sep">
+      <p style="font-size:11px;">
+        <span class="tag">Python</span><span class="tag">yfinance</span><span class="tag">NumPy</span><span class="tag">Monte Carlo</span><span class="tag">Factor Investing</span>
+      </p>
+      <hr class="sep">
+      <p>
+        <a href="https://github.com/prithvishahh/CFM-RoboAdvising-Challenge" target="_blank">GITHUB ↗</a>
+      </p>`
+  },
+  subtrack: {
+    title: 'SUBTRACK — POSITION DETAIL',
+    body: `
+      <p class="amber" style="font-size:14px;font-weight:600;">SubTrack — Subscription Burn Rate Tracker</p>
+      <p class="dim" style="font-size:11px;">Fintech Analytics · Live</p>
+      <hr class="sep">
+      <p>Full-stack web app for tracking and analyzing recurring subscription spending. Users get a <strong style="color:var(--amber)">private dashboard</strong> with real-time burn rate analytics, category breakdowns, and cost optimization insights.</p>
+      <ul>
+        <li>Per-user dashboards with <strong style="color:var(--amber)">monthly & annual burn rate</strong> calculations</li>
+        <li>Category-level spending breakdowns with percentage bars</li>
+        <li>Auto-highlights <strong class="green">top 3 most expensive</strong> subscriptions</li>
+        <li>Cloud-persisted data via PostgreSQL — works across devices</li>
+        <li>Multi-tenant: isolated data per username</li>
+      </ul>
+      <hr class="sep">
+      <p style="font-size:11px;">
+        <span class="tag">Python</span><span class="tag">PostgreSQL</span><span class="tag">Vercel</span><span class="tag">Full-Stack</span>
+      </p>
+      <hr class="sep">
+      <p>
+        <a href="https://sub-track-amber.vercel.app" target="_blank">LIVE ↗</a> &nbsp;·&nbsp;
+        <a href="https://github.com/Hannanahmed0/SubTrack" target="_blank">GITHUB ↗</a>
+      </p>`
+  },
+  zarf: {
+    title: 'ZARF — POSITION DETAIL',
+    body: `
+      <p class="amber" style="font-size:14px;font-weight:600;">ZARF — Pre-Nikah Clarity Platform</p>
+      <p class="dim" style="font-size:11px;">Hackathon Project · Live</p>
+      <hr class="sep">
+      <p>Structured pre-marriage compatibility platform that replaces awkward guesswork with <strong style="color:var(--amber)">data-driven clarity</strong>. Not a dating app — built for couples who already have a serious lead and want honest alignment before commitment.</p>
+      <ul>
+        <li>Private couple linking via <strong style="color:var(--amber)">invite codes</strong> — no swiping, no discovery</li>
+        <li>Structured profiles covering deen, finances, family expectations, conflict style</li>
+        <li><strong class="green">Double-blind conflict scenarios</strong> — responses revealed only after both submit, preventing agreement bias</li>
+        <li>Financial stress test: flags sustainability gaps (Sustainable / Tight / Unsustainable)</li>
+        <li>Generates printable clarity guide for families, wali, or scholars</li>
+        <li>Guest mode for quick exploration without sign-up</li>
+      </ul>
+      <hr class="sep">
+      <p style="font-size:11px;">
+        <span class="tag">Next.js 14</span><span class="tag">TypeScript</span><span class="tag">Tailwind</span><span class="tag">Prisma</span><span class="tag">Supabase</span><span class="tag">Vercel</span>
+      </p>
+      <hr class="sep">
+      <p>
+        <a href="https://usezarf.vercel.app" target="_blank">LIVE ↗</a> &nbsp;·&nbsp;
+        <a href="https://github.com/ammar-adam/zarf" target="_blank">GITHUB ↗</a>
+      </p>`
+  }
+};
+
+// ═══════════════════════════════════════
+// BOOT SEQUENCE
+// ═══════════════════════════════════════
+(function boot() {
+  const lines = document.querySelectorAll('#boot-log .line');
+  lines.forEach((line, i) => {
+    setTimeout(() => line.classList.add('show'), 150 + i * 220);
+  });
+
+  // Animate stock graph
+  const graphEl = document.getElementById('boot-graph');
+  const graphLine = document.getElementById('boot-graph-line');
+  const graphFill = document.getElementById('boot-graph-fill');
+
+  // Generate spiky upward-trending data points
+  const totalPoints = 60;
+  const points = [];
+  let price = 160; // start near bottom (SVG y is inverted: 200=bottom, 0=top)
+  for (let i = 0; i <= totalPoints; i++) {
+    const trend = -1.8; // upward trend (negative because SVG y is inverted)
+    const spike = (Math.random() - 0.4) * 28; // spiky volatility, biased up
+    const momentum = Math.sin(i * 0.3) * 10;
+    price = Math.max(15, Math.min(185, price + trend + spike + momentum));
+    points.push({ x: (i / totalPoints) * 400, y: price });
+  }
+
+  // Build path string
+  const lineD = points.map((p, i) => (i === 0 ? 'M' : 'L') + p.x.toFixed(1) + ',' + p.y.toFixed(1)).join(' ');
+  const fillD = lineD + ' L400,200 L0,200 Z';
+
+  // Show graph container shortly after boot starts
+  setTimeout(() => {
+    graphEl.classList.add('show');
+  }, 200);
+
+  // Progressive line drawing animation
+  graphLine.setAttribute('d', lineD);
+  const pathLength = graphLine.getTotalLength();
+  graphLine.style.strokeDasharray = pathLength;
+  graphLine.style.strokeDashoffset = pathLength;
+
+  graphFill.setAttribute('d', fillD);
+  graphFill.style.clipPath = 'inset(0 100% 0 0)';
+
+  const animDuration = lines.length * 220 + 300; // sync with boot log lines
+  const startTime = performance.now() + 300;
+
+  function animateGraph(now) {
+    const elapsed = now - startTime;
+    if (elapsed < 0) { requestAnimationFrame(animateGraph); return; }
+    const progress = Math.min(elapsed / animDuration, 1);
+    const eased = 1 - Math.pow(1 - progress, 2); // ease-out
+    graphLine.style.strokeDashoffset = pathLength * (1 - eased);
+    graphFill.style.clipPath = 'inset(0 ' + ((1 - eased) * 100).toFixed(1) + '% 0 0)';
+    if (progress < 1) requestAnimationFrame(animateGraph);
+  }
+  requestAnimationFrame(animateGraph);
+
+  setTimeout(() => {
+    document.getElementById('boot-screen').classList.add('hidden');
+    document.getElementById('app').classList.add('booted');
+    setTimeout(() => document.getElementById('boot-screen').style.display = 'none', 500);
+  }, 150 + lines.length * 220 + 1600);
+})();
+
+// ═══════════════════════════════════════
+// CLOCK
+// ═══════════════════════════════════════
+function updateClock() {
+  const now = new Date();
+  const h = String(now.getHours()).padStart(2, '0');
+  const m = String(now.getMinutes()).padStart(2, '0');
+  const s = String(now.getSeconds()).padStart(2, '0');
+  document.getElementById('clock').textContent = h + ':' + m + ':' + s + ' EST';
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ═══════════════════════════════════════
+// RESEARCH DATE
+// ═══════════════════════════════════════
+document.getElementById('research-date').textContent = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }).toUpperCase();
+
+// ═══════════════════════════════════════
+// SNAKE GAME
+// ═══════════════════════════════════════
+(function initSnake() {
+  const canvas = document.getElementById('snake-canvas');
+  const ctx = canvas.getContext('2d');
+  const overlay = document.getElementById('snake-overlay');
+  const scoreEl = document.getElementById('snake-score');
+  const bestEl = document.getElementById('snake-best');
+  const levelEl = document.getElementById('snake-speed-display');
+
+  const CELL = 16;
+  const COLS = canvas.width / CELL;  // 35
+  const ROWS = canvas.height / CELL; // 20
+  const AMBER = '#ff9900';
+  const GREEN = '#00cc66';
+  const RED = '#ff4444';
+  const DIM = '#1a1a1a';
+  const GRID = '#111';
+
+  let snake, dir, nextDir, food, score, best = 0, level, alive, paused, loop;
+  let baseSpeed = 120;
+
+  function reset() {
+    const mid = Math.floor(ROWS / 2);
+    snake = [{x:5,y:mid},{x:4,y:mid},{x:3,y:mid}];
+    dir = {x:1,y:0};
+    nextDir = {x:1,y:0};
+    score = 0;
+    level = 1;
+    alive = true;
+    paused = false;
+    scoreEl.textContent = '0';
+    levelEl.textContent = '1';
+    placeFood();
+  }
+
+  function placeFood() {
+    let pos;
+    do {
+      pos = {x: Math.floor(Math.random()*COLS), y: Math.floor(Math.random()*ROWS)};
+    } while (snake.some(s => s.x===pos.x && s.y===pos.y));
+    food = pos;
+  }
+
+  function draw() {
+    // Background
+    ctx.fillStyle = '#050505';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Grid dots
+    ctx.fillStyle = GRID;
+    for (let x = 0; x < COLS; x++) {
+      for (let y = 0; y < ROWS; y++) {
+        ctx.fillRect(x*CELL, y*CELL, CELL, CELL);
+        ctx.fillStyle = '#050505';
+        ctx.fillRect(x*CELL+1, y*CELL+1, CELL-2, CELL-2);
+        ctx.fillStyle = GRID;
+      }
+    }
+
+    // Food (pulsing)
+    const pulse = 0.7 + 0.3 * Math.sin(Date.now() / 150);
+    ctx.fillStyle = RED;
+    ctx.globalAlpha = pulse;
+    ctx.fillRect(food.x*CELL+2, food.y*CELL+2, CELL-4, CELL-4);
+    ctx.globalAlpha = 1;
+
+    // Snake
+    snake.forEach((seg, i) => {
+      const brightness = 1 - (i / snake.length) * 0.5;
+      if (i === 0) {
+        ctx.fillStyle = AMBER;
+      } else {
+        ctx.fillStyle = GREEN;
+        ctx.globalAlpha = brightness;
+      }
+      ctx.fillRect(seg.x*CELL+1, seg.y*CELL+1, CELL-2, CELL-2);
+      ctx.globalAlpha = 1;
+    });
+  }
+
+  function update() {    // Snake
+
+    if (!alive || paused) return;
+    dir = nextDir;
+    const head = {x: snake[0].x + dir.x, y: snake[0].y + dir.y};
+
+    // Wall collision
+    if (head.x < 0 || head.x >= COLS || head.y < 0 || head.y >= ROWS) {
+      die(); return;
+    }
+    // Self collision
+    if (snake.some(s => s.x === head.x && s.y === head.y)) {
+      die(); return;
+    }
+
+    snake.unshift(head);
+
+    if (head.x === food.x && head.y === food.y) {
+      score += 10;
+      scoreEl.textContent = score;
+      // Level up every 50 points
+      const newLevel = Math.floor(score / 50) + 1;
+      if (newLevel !== level) {
+        level = newLevel;
+        levelEl.textContent = level;
+        clearInterval(loop);
+        const speed = Math.max(50, baseSpeed - (level - 1) * 10);
+        loop = setInterval(tick, speed);
+      }
+      placeFood();
+    } else {
+      snake.pop();
+    }
+  }
+
+  function die() {
+    alive = false;
+    clearInterval(loop);
+    if (score > best) {
+      best = score;
+      bestEl.textContent = best;
+    }
+    // Flash effect
+    ctx.fillStyle = RED;
+    ctx.globalAlpha = 0.15;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.globalAlpha = 1;
+
+    overlay.classList.remove('hidden');
+    overlay.innerHTML = '<div class="snake-prompt">GAME OVER</div><div class="snake-score-final">SCORE: ' + score + '</div><div class="snake-sub">PRESS SPACE TO PLAY AGAIN</div>';
+  }
+
+  function tick() {
+    update();
+    draw();
+  }
+
+  function startGame() {
+    reset();
+    overlay.classList.add('hidden');
+    const speed = Math.max(50, baseSpeed - (level - 1) * 10);
+    loop = setInterval(tick, speed);
+    draw();
+  }
+
+  // Controls
+  document.addEventListener('keydown', (e) => {
+    // Only handle snake keys when overview panel is visible
+    const overviewPanel = document.getElementById('p-overview');
+    if (!overviewPanel || !overviewPanel.classList.contains('active')) return;
+
+    if (e.code === 'Space') {
+      e.preventDefault();
+      if (!alive) {
+        startGame();
+      }
+      return;
+    }
+    if (e.code === 'KeyP' && alive) {
+      paused = !paused;
+      if (paused) {
+        overlay.classList.remove('hidden');
+        overlay.innerHTML = `<div class="snake-prompt">PAUSED</div><div class="snake-sub">PRESS P TO RESUME</div>`;
+      } else {
+        overlay.classList.add('hidden');
+      }
+      return;
+    }
+    if (!alive || paused) return;
+    switch(e.code) {
+      case 'ArrowUp':    e.preventDefault(); if(dir.y!==1)  nextDir={x:0,y:-1}; break;
+      case 'ArrowDown':  e.preventDefault(); if(dir.y!==-1) nextDir={x:0,y:1};  break;
+      case 'ArrowLeft':  e.preventDefault(); if(dir.x!==1)  nextDir={x:-1,y:0}; break;
+      case 'ArrowRight': e.preventDefault(); if(dir.x!==-1) nextDir={x:1,y:0};  break;
+    }
+  });
+
+  // Initial draw
+  reset();
+  alive = false; // start in "press space to play" state
+  draw();
+})();
+
+// ═══════════════════════════════════════
+// TICKER
+// ═══════════════════════════════════════
+(function buildTicker() {
+  const items = [
+    { sym: 'SPY', price: '598.24', change: '\u25B21.2%', up: true },
+    { sym: 'BTC', price: '84,210', change: '\u25BC0.4%', up: false },
+    { sym: 'AAPL', price: '213.40', change: '\u25B20.8%', up: true },
+    { sym: 'MSFT', price: '441.18', change: '\u25B20.3%', up: true },
+    { sym: 'TSLA', price: '342.55', change: '\u25BC1.2%', up: false },
+    { sym: 'NVDA', price: '138.92', change: '\u25B22.1%', up: true },
+    { sym: 'QQQ', price: '518.73', change: '\u25B20.9%', up: true },
+    { sym: 'ETH', price: '3,412', change: '\u25B21.7%', up: true },
+    { special: true, text: '$UMER \u2014 OPEN TO CO-OP' },
+    { sym: 'VOO', price: '551.08', change: '\u25B21.1%', up: true },
+    { sym: 'AMZN', price: '218.34', change: '\u25B20.5%', up: true },
+    { sym: 'META', price: '612.30', change: '\u25BC0.3%', up: false },
+  ];
+  let html = '';
+  for (let rep = 0; rep < 2; rep++) {
+    items.forEach(it => {
+      if (it.special) {
+        html += '<span class="tick-item"><span class="tick-special">' + it.text + '</span></span>';
+      } else {
+        html += '<span class="tick-item"><span class="tick-sym">' + it.sym + '</span><span class="tick-price">' + it.price + '</span><span class="' + (it.up ? 'tick-up' : 'tick-down') + '">' + it.change + '</span></span>';
+      }
+    });
+  }
+  document.getElementById('ticker').innerHTML = html;
+})();
+
+// ═══════════════════════════════════════
+// NAV
+// ═══════════════════════════════════════
+function switchPanel(id) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('p-' + id).classList.add('active');
+  document.querySelector('.nav-btn[data-panel="' + id + '"]').classList.add('active');
+}
+
+// Keyboard shortcuts
+document.addEventListener('keydown', e => {
+  if (document.getElementById('modal-overlay').classList.contains('open')) {
+    if (e.key === 'Escape') closeModal();
+    return;
+  }
+  const map = { F1: 'overview', F2: 'research', F3: 'positions', F4: 'contact' };
+  if (map[e.key]) { e.preventDefault(); switchPanel(map[e.key]); }
+  if (e.key === 'Escape') closeModal();
+});
+
+// ═══════════════════════════════════════
+// MODAL
+// ═══════════════════════════════════════
+function openModal(key) {
+  const data = modalData[key];
+  if (!data) return;
+  document.getElementById('modal-title').textContent = data.title;
+  document.getElementById('modal-body').innerHTML = data.body;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+}
+
+document.getElementById('modal-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal-overlay')) closeModal();
+});
+
+// ═══════════════════════════════════════
+// COPY EMAIL
+// ═══════════════════════════════════════
+function copyEmail(btn) {
+  navigator.clipboard.writeText('uicheema@uwaterloo.ca').then(() => {
+    btn.textContent = '[ COPIED \u2713 ]';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.textContent = '[ COPY ]';
+      btn.classList.remove('copied');
+    }, 2000);
+  });
+}
+
+// ═══════════════════════════════════════
+// CONTACT — SEND
+// ═══════════════════════════════════════
+function sendMessage() {
+  const msg = document.getElementById('msg-area').value.trim();
+  if (!msg) return;
+  const btn = document.getElementById('send-btn');
+  btn.textContent = '[ SENDING... ]';
+  btn.disabled = true;
+  fetch('https://formspree.io/f/xojkjeel', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    body: JSON.stringify({ message: msg })
+  }).then(r => {
+    if (r.ok) {
+      btn.textContent = '[ SENT \u2713 ]';
+      btn.style.borderColor = 'var(--green)';
+      btn.style.color = 'var(--green)';
+      document.getElementById('msg-area').value = '';
+      setTimeout(() => { btn.textContent = '[ SEND TRANSMISSION ]'; btn.style.borderColor = ''; btn.style.color = ''; btn.disabled = false; }, 3000);
+    } else {
+      // Fallback to mailto
+      window.open('mailto:uicheema@uwaterloo.ca?subject=Terminal%20Contact&body=' + encodeURIComponent(msg));
+      btn.textContent = '[ SEND TRANSMISSION ]'; btn.disabled = false;
+    }
+  }).catch(() => {
+    // Fallback to mailto
+    window.open('mailto:uicheema@uwaterloo.ca?subject=Terminal%20Contact&body=' + encodeURIComponent(msg));
+    btn.textContent = '[ SEND TRANSMISSION ]'; btn.disabled = false;
+  });
+}
+</script>
+</body>
+</html>
