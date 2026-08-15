@@ -112,7 +112,7 @@ export function buildWorld(scene) {
     at(fac, 0, 1.40, -0.5); sc(fac); G.add(fac);
 
     // shallow relief pilasters so the facade is not a blank slab
-    for (const x of [-3.4, -2.2, 2.2, 3.4]) {
+    for (const x of [-3.7, -2.6, 2.6, 3.7]) {
       G.add(sc(at(B(0.22, 5.4, 0.07, voidMat), x, 2.0, -0.055)));
     }
     G.add(sc(at(B(18, 0.16, 0.10, voidMat), 0, 4.62, -0.07)));
@@ -153,12 +153,12 @@ export function buildWorld(scene) {
     // floating in a black void rather than as lit signage on a wall.
     {
       const pl = new THREE.SpotLight(0xffe2b4, 9, 3.2, 0.72, 0.85, 1.5);
-      pl.position.set(1.80, 2.32, -0.62);
-      pl.target.position.set(1.80, 1.46, -0.06);
+      pl.position.set(1.93, 2.62, -0.66);
+      pl.target.position.set(1.93, 1.50, -0.06);
       G.add(pl, pl.target);
       // little brass hood so the light has a visible source
-      G.add(sc(at(CY(0.035, 0.045, 0.10, M.brass, 12), 1.80, 2.30, -0.60, Math.PI / 2.6)));
-      G.add(sc(at(B(0.030, 0.26, 0.030, M.brass), 1.80, 2.14, -0.34)));
+      G.add(sc(at(CY(0.040, 0.052, 0.13, M.brass, 12), 1.93, 2.60, -0.64, Math.PI / 2.6)));
+      G.add(sc(at(B(0.032, 0.30, 0.032, M.brass), 1.93, 2.42, -0.36)));
 
       const sl = new THREE.SpotLight(0xdfe8ff, 7, 3.0, 0.80, 0.9, 1.5);
       sl.position.set(0, 3.62, -0.70);
@@ -395,6 +395,86 @@ export function buildWorld(scene) {
     // bleed light around the bezel, kept BEHIND the panel plane so it
     // never blends over the hole-punch and dims the text
     trading.add(at(glowSprite(0x6d93c8, 4.2, 0.22), 0, 1.75, 15.88));
+
+    // ── the rest of the wall ────────────────────────────────────────
+    // At the reading stop the frustum covers x ±1.98 and y 0.64..2.86 at the
+    // board plane, while the board itself only occupies x ±1.30 / y 1.02..2.48.
+    // Everything below fills those margins so the shot reads as a trading wall
+    // rather than a poster on an empty office wall. All the screens share ONE
+    // chart-sheet texture via UV sub-rects and merge into a single draw call.
+    {
+      const sheetTex = TEX.chartSheetTexture(3, 2, 512);
+      const screenMat = new THREE.MeshBasicMaterial({ map: sheetTex, toneMapped: false, fog: true });
+      const COLS = 3, ROWS = 2;
+      const screenGeos = [];
+      let cellIdx = 0;
+      const addScreen = (w, h, x, y, z, ry = Math.PI) => {
+        const gm = new THREE.PlaneGeometry(w, h);
+        const cx = cellIdx % COLS, cy = Math.floor(cellIdx / COLS) % ROWS;
+        cellIdx++;
+        const uv = gm.getAttribute('uv');
+        for (let i = 0; i < uv.count; i++) {
+          uv.setXY(i, (uv.getX(i) + cx) / COLS, (uv.getY(i) + (ROWS - 1 - cy)) / ROWS);
+        }
+        gm.rotateY(ry);
+        gm.translate(x, y, z);
+        screenGeos.push(gm);
+      };
+
+      const bezels = [];
+      const addBezel = (w, h, x, y, z, d = 0.05) => {
+        const gm = new THREE.BoxGeometry(w, h, d);
+        gm.translate(x, y, z);
+        bezels.push(gm);
+      };
+
+      // flanking stacks: three screens per side in the x margin
+      for (const s of [-1, 1]) {
+        for (let i = 0; i < 3; i++) {
+          const y = 1.20 + i * 0.52;
+          addBezel(0.47, 0.33, s * 1.72, y, 15.885);
+          addScreen(0.42, 0.28, s * 1.72, y, 15.858);
+        }
+      }
+      // low console screens under the board, angled up slightly
+      for (const s of [-1, 1]) {
+        addBezel(0.74, 0.30, s * 0.52, 0.90, 15.60, 0.06);
+        addScreen(0.68, 0.25, s * 0.52, 0.905, 15.565, Math.PI);
+      }
+
+      const screens = new THREE.Mesh(mergeGeometries(screenGeos), screenMat);
+      screens.frustumCulled = false;
+      trading.add(screens);
+      trading.add(rc(new THREE.Mesh(mergeGeometries(bezels), M.darkSteel)));
+
+      // credenza the console screens sit on
+      trading.add(sc(at(B(2.9, 0.74, 0.44, M.darkSteel), 0, 0.37, 15.66)));
+      trading.add(sc(at(B(3.0, 0.04, 0.50, M.concrete2), 0, 0.76, 15.66)));
+
+      // ticker crawl directly above the board
+      const tick = TEX.tickerTexture();
+      tick.repeat.set(3.1, 1);
+      const tickMat = new THREE.MeshBasicMaterial({ map: tick, toneMapped: false });
+      const tickMesh = at(new THREE.Mesh(new THREE.PlaneGeometry(3.4, 0.15), tickMat), 0, 2.60, 15.86, 0, Math.PI, 0);
+      trading.add(tickMesh);
+      trading.add(rc(at(B(3.5, 0.22, 0.05, M.darkSteel), 0, 2.60, 15.90)));
+      anim.push({ update: () => { tick.offset.x -= 0.0016; } });
+
+      // exposed structure across the top of frame
+      for (let i = 0; i < 5; i++) {
+        trading.add(rc(at(B(4.6, 0.05, 0.05, M.darkSteel), 0, 2.90, 15.0 + i * 0.22)));
+      }
+      trading.add(rc(at(B(0.30, 0.10, 1.30, M.darkSteel), -1.5, 2.94, 15.4)));
+      trading.add(rc(at(B(0.30, 0.10, 1.30, M.darkSteel), 1.5, 2.94, 15.4)));
+
+      // screen bleed onto the wall
+      for (const s of [-1, 1]) trading.add(at(glowSprite(0x5f9ad8, 1.9, 0.20), s * 1.62, 1.76, 15.80));
+      trading.add(at(glowSprite(0x4f86c8, 2.2, 0.16), 0, 0.96, 15.52));
+      const consoleLight = new THREE.PointLight(0x6ea8e8, 2.0, 3.4, 2);
+      consoleLight.position.set(0, 1.05, 15.20); trading.add(consoleLight);
+      const stackLight = new THREE.PointLight(0x6ea8e8, 1.6, 3.0, 2);
+      stackLight.position.set(0, 1.9, 15.35); trading.add(stackLight);
+    }
 
     // desk pods receding toward the camera
     const podZ = [9.1, 10.6, 12.1];

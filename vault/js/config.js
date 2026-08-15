@@ -71,7 +71,7 @@ export const FLANK = {
   // tucked into the gap between the door's rebate ring (outer edge 1.375)
   // and the first facade pilaster (inner edge 2.09) — at x=2.80 it sat on
   // the frame edge and read as an afterthought rather than as hung on a wall
-  photo: { el: [520, 650], w: 0.60, pos: [1.76, 1.50, -0.06] },
+  photo: { el: [520, 650], w: 1.00, pos: [1.93, 1.50, -0.06] },
   sign:  { el: [660, 200], w: 0.92, pos: [0, 2.92, -0.06] }
 };
 FLANK.photo.h = FLANK.photo.w * FLANK.photo.el[1] / FLANK.photo.el[0];
@@ -82,7 +82,7 @@ FLANK.sign.h = FLANK.sign.w * FLANK.sign.el[1] / FLANK.sign.el[0];
 // sheet's window opens. That non-overlap is load-bearing: these sit back at
 // the vault (z≈0) while the office camera is at z≈4.1, so any overlap left
 // them behind the camera. See the inFrontOf() guard in panels.js.
-export const FLANK_WINDOW = [0.276, 0.300, 0.322, 0.352];
+export const FLANK_WINDOW = [0.195, 0.232, 0.322, 0.352];
 
 // Per-room panel visibility. These MUST NOT overlap. They used to (sheet ran
 // to 0.560 while board opened at 0.516) and mid-corridor both were live at

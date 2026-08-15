@@ -229,18 +229,19 @@ console.log('\n── 8. flank photo/sign ──');
   const [a, b1, c, d] = C.FLANK_WINDOW;
   if (!(a < b1 && b1 <= c && c < d)) bad(`FLANK_WINDOW is not a valid 4-point fade: [${C.FLANK_WINDOW}]`);
   else ok(`FLANK fades in [${a},${b1}], out [${c},${d}]`);
-  if (b1 < C.BEAT.swing[0]) bad(`flank panels fully visible (${b1}) before the door starts swinging (${C.BEAT.swing[0]})`);
   // the flanks are revealed by the visitor-driven swing, so they must fade in
   // within the swing window, not during autoplay
-  if (a < C.INTRO_END) bad(`flank fade-in starts (${a}) before INTRO_END (${C.INTRO_END}) — would appear while the door is still shut`);
-  else if (a > C.BEAT.swing[1]) bad(`flank fade-in starts (${a}) after the swing completes (${C.BEAT.swing[1]})`);
-  else ok(`flank reveals during the visitor-driven swing (${C.INTRO_END}..${C.BEAT.swing[1]})`);
+  // the portrait/sign are wall fixtures, visible as soon as the camera settles
+  // into the wide shot — deliberately BEFORE the door opens
+  if (a > C.BEAT.swing[1]) bad(`flank fade-in starts (${a}) after the swing completes (${C.BEAT.swing[1]}) — would never be seen`);
+  else if (b1 > C.INTRO_END) bad(`flank not fully visible until ${b1}, after autoplay ends at ${C.INTRO_END} — should be up while the vault is still shut`);
+  else ok(`flank fully visible by ${b1}, before autoplay ends (${C.INTRO_END}) and the door opens`);
   // must be fully faded out before the office sheet appears — they sit back
   // at the vault while the office camera is 4m past them, so any overlap
   // leaves a CSS3D element behind the camera (see inFrontOf in panels.js)
   // geometry: door mouth is a circle r=1.255 at y=VAULT_Y; facade pilasters
   // are 0.22 wide at these x positions
-  const PILASTERS = [-3.4, -2.2, 2.2, 3.4].map(x => [x - 0.11, x + 0.11]);
+  const PILASTERS = [-3.7, -2.6, 2.6, 3.7].map(x => [x - 0.11, x + 0.11]);
   const DOOR_R = 1.255, DOOR_TOP = C.VAULT_Y + DOOR_R;
   const t = Math.tan((C.FOV * Math.PI / 180) / 2);
   const camY = C.FIXED_STOP.wide.pos[1], camZ = C.FIXED_STOP.wide.pos[2];
