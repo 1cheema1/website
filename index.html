@@ -37,11 +37,21 @@ body.has-cursor,body.has-cursor *{cursor:none !important;}
    when the canvas is busiest. A plain ring with a dark halo reads fine over
    both the black antechamber and the paper panels, and costs nothing.
    will-change keeps it on its own layer so moving it never repaints anything. */
+/* The transform carries a short linear transition. JS can only set a new
+   target once per frame, and when a frame runs long the ring would otherwise
+   jump between positions — which is what reads as lag. With a transition the
+   compositor interpolates between targets on its own thread, so the ring keeps
+   moving smoothly through a long frame instead of freezing and snapping. It
+   trails by about a frame, and continuous motion at a small offset feels far
+   better than accurate motion that stutters. */
 #cursor{position:fixed;z-index:9500;top:0;left:0;width:22px;height:22px;margin:-11px 0 0 -11px;
   border-radius:50%;border:1px solid rgba(201,162,39,.9);pointer-events:none;
   box-shadow:0 0 0 1px rgba(8,7,10,.55),0 0 10px rgba(8,7,10,.5);
-  will-change:transform;
-  transition:width .18s ease,height .18s ease,margin .18s ease,background .18s ease,border-color .18s ease;}
+  will-change:transform;contain:layout style paint;
+  transition:transform .055s linear,
+             width .18s ease,height .18s ease,margin .18s ease,
+             background .18s ease,border-color .18s ease;}
+@media (prefers-reduced-motion: reduce){#cursor{transition:none;}}
 #cursor::after{content:'';position:absolute;inset:0;margin:auto;width:3px;height:3px;border-radius:50%;
   background:var(--gold2);}
 #cursor.hot{width:40px;height:40px;margin:-20px 0 0 -20px;background:rgba(201,162,39,.14);}

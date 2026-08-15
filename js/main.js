@@ -832,6 +832,37 @@ function applyQuality(tier) {
   if (bokehPass) bokehPass.enabled = q.bokeh;
 }
 
+// ── the intro renders cheap ──────────────────────────────────────
+// The intro is the most expensive thing on the site and the least able to
+// afford it. Three costs stack up there: 31 lights, which every fragment of
+// every lit material loops over; a full-resolution buffer at DPR 1.5, which is
+// 2.25x the fragments of DPR 1; and depth-of-field, which renders the ENTIRE
+// scene a second time to build its depth buffer.
+//
+// So during the intro we drop to DPR 1 and turn DoF off. Nothing about the
+// choreography changes — same camera, same beats, same timings — but the frame
+// costs roughly a third of what it did, which is what the cursor was starving
+// for. It is also the least visible place to spend resolution: the shot is
+// dark, moving fast, and carries grain and bloom over the top.
+//
+// DoF comes back on for the rack focus across the forge, where it is the whole
+// point of the shot, and normal quality resumes at handoff.
+let introCheap = false;
+function setIntroCheap(on, wantBokeh) {
+  if (on !== introCheap) {
+    introCheap = on;
+    const want = on ? 1.0 : Math.min(devicePixelRatio, QUALITY[qTier].dpr);
+    if (Math.abs(renderer.getPixelRatio() - want) > 0.01) {
+      renderer.setPixelRatio(want);
+      renderer.setSize(innerWidth, innerHeight);
+      composer.setSize(innerWidth, innerHeight);
+      if (bloomPass) bloomPass.setSize(innerWidth, innerHeight);
+    }
+  }
+  // enabled is a plain flag — toggling it costs nothing, no reallocation
+  if (bokehPass) bokehPass.enabled = on ? !!wantBokeh : QUALITY[qTier].bokeh;
+}
+
 let frameEMA = 16.7;               // ms, exponential moving average
 const FINE_POINTER = matchMedia('(pointer: fine)').matches;
 if (FINE_POINTER) {
@@ -1035,7 +1066,12 @@ function frame(now) {
 
   // frame-time EMA drives both the pointer and the quality ladder
   frameEMA += ((dt * 1000) - frameEMA) * 0.06;
-  if (!NO_POST && now > qHoldUntil) {
+  // intro gets its own cheap mode; the ladder only runs once we are past it
+  if (!NO_POST) {
+    const inIntro = !introDone && p < C.INTRO_END;
+    setIntroCheap(inIntro, inIntro && p >= C.BEAT.fall[1] && p < C.BEAT.dial[1]);
+  }
+  if (!NO_POST && !introCheap && now > qHoldUntil) {
     if (frameEMA > Q_DOWN_MS && qTier < QUALITY.length - 1) {
       applyQuality(qTier + 1); qHoldUntil = now + Q_DOWN_COOLDOWN;
     } else if (frameEMA < Q_UP_MS && qTier > 0) {

@@ -191,12 +191,13 @@ export function buildWorld(scene, market = null) {
       map: TEX.plaqueTexture('FIRST DEPOSIT', 'SEPT · 2022'), transparent: true, roughness: 0.4, metalness: 0.7, envMapIntensity: 1.0, side: THREE.DoubleSide
     }));
     at(plaqueFace, 0, 0.585, -0.330, 0, Math.PI, 0); G.add(plaqueFace);
-    // and a light on it — the intro's whole premise is written on this plaque
-    {
-      const pq = new THREE.SpotLight(0xffdca8, 5.0, 2.0, 0.7, 0.9, 1.6);
-      pq.position.set(0, 1.15, -0.95); pq.target.position.set(0, 0.585, -0.33);
-      G.add(pq, pq.target);
-    }
+    // The plaque had its own spotlight. One more scene-wide light for a 0.5m
+    // plate is a bad trade — every light is evaluated by every fragment of
+    // every lit material, wherever it is — so it lights itself instead. Reads
+    // the same and costs nothing anywhere else.
+    plaqueFace.material.emissive = new THREE.Color(0xffdca8);
+    plaqueFace.material.emissiveMap = plaqueFace.material.map;
+    plaqueFace.material.emissiveIntensity = 0.62;
 
     // rig — one hard key from above-left, one cool rim from the right
     const key = new THREE.SpotLight(0xffe6c0, 31, 9, 0.54, 0.45, 1.6);
@@ -216,7 +217,12 @@ export function buildWorld(scene, market = null) {
     // Grazing light up the face of the wall. Shadowless and cheap, but it is
     // what turns four flat pilaster slabs into architecture — you read the
     // relief because the light rakes across it rather than facing it.
-    for (const x of [-5.4, -3.15, 3.15, 5.4]) {
+    // Two, not four. Every light in the scene is evaluated by every fragment of
+    // every lit material regardless of where it is, and these four were added
+    // to the room the intro plays in — so they were among the most expensive
+    // lights on the site. At ±4.2 a single pair covers the same wall, because
+    // the cone angle does the spreading, not the count.
+    for (const x of [-4.2, 4.2]) {
       const up = new THREE.SpotLight(0x9fb4d8, 34, 9.5, 0.52, 0.80, 1.35);
       up.position.set(x, 0.06, -0.72);
       up.target.position.set(x, 5.0, -0.06);
