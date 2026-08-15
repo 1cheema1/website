@@ -38,6 +38,7 @@ export function buildWorld(scene, market = null) {
   const root = new THREE.Group();
   scene.add(root);
   const anim = [];
+  let anteGroup = null;
   const anteLights = [];   // handed to the intro, which cuts them at the burst
   const glowTex = TEX.glowTexture();
 
@@ -87,7 +88,7 @@ export function buildWorld(scene, market = null) {
   // ANTECHAMBER — the dark space where the piggy is smashed
   // ══════════════════════════════════════════════════════════════
   {
-    const R = ROOM.ante, G = new THREE.Group(); root.add(G);
+    const R = ROOM.ante, G = new THREE.Group(); root.add(G); anteGroup = G;
 
     // deliberately dark, low-reflectance surfaces: this is a black box
     // with one hard light in it, not a lit room.
@@ -952,5 +953,16 @@ export function buildWorld(scene, market = null) {
     const bounceR = new THREE.PointLight(0xff9f60, 2.0, 12, 2); bounceR.position.set(-2.4, 1.2, 29); rooftop.add(bounceR);
   }
 
-  return { root, anim, M, glowSprite, emis, anteLights };
+  // 51 · rooms exposed so the loop can drop the ones out of range. Each is a
+  // single Group, so hiding one skips its whole subtree in one test rather than
+  // frustum-culling every mesh inside it.
+  const rooms = [
+    { g: anteGroup, z0: ROOM.ante.z0,    z1: ROOM.ante.z1 },
+    { g: office,    z0: ROOM.office.z0,  z1: ROOM.office.z1 },
+    { g: trading,   z0: ROOM.trading.z0, z1: ROOM.trading.z1 },
+    { g: study,     z0: ROOM.study.z0,   z1: ROOM.study.z1 },
+    { g: rooftop,   z0: ROOM.rooftop.z0, z1: ROOM.rooftop.z1 }
+  ].filter(r => r.g);
+
+  return { root, anim, M, glowSprite, emis, anteLights, rooms };
 }

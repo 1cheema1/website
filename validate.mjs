@@ -307,7 +307,8 @@ console.log('\n── 6. intro beats are ordered ──');
 
 console.log('\n── 9b. each panel is visible at its own station ──');
 {
-  const AT = { sheet: 1, board: 2, spread: 3, card: 4, note: 5 };
+  // shifted down one when the vault-open hold stopped being a station
+  const AT = { sheet: 0, board: 1, spread: 2, card: 3, note: 4 };
   for (const [k, idx] of Object.entries(AT)) {
     const st = C.STATIONS[idx], w = C.PANEL_WINDOW[k];
     if (!w) { bad(`no PANEL_WINDOW for ${k}`); continue; }

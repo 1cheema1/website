@@ -672,7 +672,8 @@ if (LOCKED !== null || WANT_RESUME) {
 // ═══════════════════ header nav clicks ═══════════════════
 // Jump straight to a room's READING station (not its reveal), since someone
 // clicking "Positions" wants the board, not the doorway.
-const ROOM_STATION = { office: 1, trading: 2, study: 3, rooftop: 4 };
+// indices shifted when the vault-open hold stopped being a station
+const ROOM_STATION = { office: 0, trading: 1, study: 2, rooftop: 3 };
 navBtns.forEach(btn => {
   btn.addEventListener('click', () => {
     if (!introDone) return;
@@ -767,39 +768,67 @@ soundBtn.addEventListener('click', () => {
 
 // ═══════════════════ custom cursor ═══════════════════
 const cursorEl = document.getElementById('cursor');
-let ptrX = -100, ptrY = -100, ptrMoved = false, hoverDirty = false;
+let ptrX = -100, ptrY = -100, hoverDirty = false;
 
-// ── why the custom cursor is adaptive ─────────────────────────────
-// A DOM cursor is painted by the main thread, so it can only move as fast as
-// the page renders. The antechamber is the heaviest moment on the site (six
-// lights, bloom, depth-of-field, 128 shard meshes), and at 15-20fps a ring
-// following the pointer reads as lag no matter how the update is scheduled —
-// removing the blend mode and moving the write into the frame loop both helped
-// and neither could fix it, because the ceiling is the frame rate itself.
+// ── adaptive quality ────────────────────────────────────────────
+// One frame-time average now drives both the cursor and the render cost. The
+// expensive things here are, in order: depth of field (a full depth pass every
+// frame), bloom (several render targets), and pixel count. Rather than pick one
+// setting for every machine, the page walks down a ladder when it is behind and
+// back up when it has room. Thresholds are far apart and each step has a
+// cooldown, because a renderer that changes resolution twice a second looks far
+// worse than one that is simply slower.
 //
-// The OS cursor has no such problem: it is composited by the window server and
-// is never late. So when frames are slow we simply give the pointer back. The
-// ring returns once there is budget for it, and on a weak machine it may never
-// appear at all — which is the correct outcome.
-let frameEMA = 16.7;               // ms, exponential moving average
-let ringOn = false;
-const RING_ON_MS = 20, RING_OFF_MS = 26;   // hysteresis, so it can't flicker
+// Nothing here changes the scene — same geometry, same lights, same materials.
+const QUALITY = [
+  { dpr: 1.5,  bloom: true,  bokeh: true  },   // 0 · everything
+  { dpr: 1.35, bloom: true,  bokeh: false },   // 1 · DoF is the first to go
+  { dpr: 1.15, bloom: true,  bokeh: false },   // 2 · fewer pixels
+  { dpr: 1.0,  bloom: false, bokeh: false }    // 3 · floor
+];
+let qTier = 0, qHoldUntil = 0;
+const Q_DOWN_MS = 27, Q_UP_MS = 15, Q_COOLDOWN = 2200;
 
-function setRing(on) {
-  if (on === ringOn) return;
-  ringOn = on;
-  document.body.classList.toggle('has-cursor', on);
-  cursorEl.style.display = on ? '' : 'none';
+function applyQuality(tier) {
+  const q = QUALITY[tier];
+  qTier = tier;
+  const want = Math.min(devicePixelRatio, q.dpr);
+  if (Math.abs(renderer.getPixelRatio() - want) > 0.01) {
+    renderer.setPixelRatio(want);
+    renderer.setSize(innerWidth, innerHeight);
+    composer.setSize(innerWidth, innerHeight);
+    if (bloomPass) bloomPass.setSize(innerWidth, innerHeight);
+  }
+  if (bloomPass) bloomPass.enabled = q.bloom;
+  if (bokehPass) bokehPass.enabled = q.bokeh;
 }
+
+let frameEMA = 16.7;               // ms, exponential moving average
 const FINE_POINTER = matchMedia('(pointer: fine)').matches;
 if (FINE_POINTER) {
-  addEventListener('mousemove', (e) => {
-    // Record only. The transform is written once per frame in frame(), so a
-    // burst of coalesced moves during a long frame can never queue up writes,
-    // and the cursor lands wherever the pointer actually is on the next paint
-    // instead of trailing through the backlog.
-    ptrX = e.clientX; ptrY = e.clientY; ptrMoved = true;
-  }, { passive: true });
+  document.body.classList.add('has-cursor');
+
+  // The ring is written here, in the input handler, not in the frame loop.
+  // Both run once per frame, but input is dispatched BEFORE rAF within the same
+  // frame, so this is the earliest the position can be set — deferring to rAF
+  // costs a whole frame of latency and buys nothing.
+  //
+  // pointerrawupdate where available: dispatched at the pointer's own polling
+  // rate rather than coalesced to the display's, so the ring tracks a high-rate
+  // mouse even when the renderer is behind.
+  //
+  // The honest limit: a DOM ring is painted by the main thread, so during a
+  // 40ms frame it cannot move at all. The only real fix for that is frame time,
+  // which is what the quality ladder above is for — not giving up the ring.
+  const writeRing = (e) => {
+    ptrX = e.clientX; ptrY = e.clientY;
+    cursorEl.style.transform = `translate3d(${ptrX}px, ${ptrY}px, 0)`;
+  };
+  if ('onpointerrawupdate' in window) {
+    addEventListener('pointerrawupdate', writeRing, { passive: true });
+  } else {
+    addEventListener('pointermove', writeRing, { passive: true });
+  }
 } else {
   cursorEl.style.display = 'none';
 }
@@ -956,9 +985,11 @@ let prev = performance.now(), firstFrame = true, firstFrameAt = 0, loaderDone = 
 // correctly-drawn scene framed for an aspect the viewer never had: everything
 // uniformly too small, with clear colour under the floor.
 let lastW = innerWidth, lastH = innerHeight;
+let frameNo = 0;
 
 function frame(now) {
   const dt = Math.min(0.05, (now - prev) / 1000); prev = now;
+  frameNo++;
 
   // The viewport can settle at ANY point after load — a restored tab, a mobile
   // URL bar collapsing, a headless capture window still being sized. The old
@@ -975,15 +1006,14 @@ function frame(now) {
   // otherwise `p` is owned by whichever tween is live: the autoplay intro
   // before handoff, or the station hop afterwards. Both write it directly.
 
-  // frame-time EMA drives whether we own the pointer at all
+  // frame-time EMA drives both the pointer and the quality ladder
   frameEMA += ((dt * 1000) - frameEMA) * 0.06;
-  if (FINE_POINTER) {
-    if (ringOn && frameEMA > RING_OFF_MS) setRing(false);
-    else if (!ringOn && frameEMA < RING_ON_MS) setRing(true);
-  }
-  if (ringOn && ptrMoved) {
-    ptrMoved = false;
-    cursorEl.style.transform = `translate3d(${ptrX}px, ${ptrY}px, 0)`;
+  if (!NO_POST && now > qHoldUntil) {
+    if (frameEMA > Q_DOWN_MS && qTier < QUALITY.length - 1) {
+      applyQuality(qTier + 1); qHoldUntil = now + Q_COOLDOWN;
+    } else if (frameEMA < Q_UP_MS && qTier > 0) {
+      applyQuality(qTier - 1); qHoldUntil = now + Q_COOLDOWN;
+    }
   }
   updateHover();
 
@@ -1001,11 +1031,30 @@ function frame(now) {
   camera.lookAt(cTgt);
 
   intro.update(p);
-  for (const a of world.anim) a.update(p, dt);
+  // world anim is ambient motion only (motes); half rate is imperceptible
+  // and halves the per-frame CPU cost of it
+  if ((frameNo & 1) === 0) for (const a of world.anim) a.update(p, dt * 2);
   // Fade the page in over the back half of the flight, so it is not a
   // billboard sailing toward you the whole way.
   panels.setResume(resumeT <= 0 ? 0 : clamp01((resumeT - 0.45) / 0.4));
   panels.update(p, camera);
+  // ── 51 · drop rooms out of range ─────────────────────────────
+  // 503 draw calls were being submitted from the antechamber, because every
+  // room ahead was still in the frustum. AHEAD is generous (fog reaches ~24m,
+  // so anything past that is invisible anyway) and BEHIND is tight, since you
+  // never turn around. Toggling one Group skips its entire subtree.
+  {
+    const cz = camera.position.z;
+    // Range follows the fog rather than a constant: nothing past fog.far is
+    // visible by definition, so that IS the correct cull distance, and it
+    // tightens automatically in the rooms where the fog closes in. A fixed 22m
+    // kept the study loaded from the antechamber, where fog ends at 12.7.
+    const AHEAD = (scene.fog ? scene.fog.far : 24) + 2, BEHIND = 4;
+    for (const r of world.rooms) {
+      r.g.visible = (r.z1 > cz - BEHIND) && (r.z0 < cz + AHEAD);
+    }
+  }
+
   applyMood(camera.position.z);
   AUDIO.updateBeds(camera.position.z);
   // hand the listener pose to the mixer so positioned voices pan correctly

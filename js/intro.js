@@ -121,6 +121,7 @@ export function buildIntro(scene, M, glowSprite, emis) {
   // ══════════ 2 · PIGGY (shards) ══════════
   const shards = new THREE.Group(); shards.visible = false; G.add(shards);
   const shardData = [];
+  const shardGeos = [];
   {
     const ico = new THREE.IcosahedronGeometry(PR, 3);       // 1280 tris
     const pos = ico.getAttribute('position');
@@ -164,14 +165,11 @@ export function buildIntro(scene, M, glowSprite, emis) {
       gm.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
       gm.setIndex(idx); gm.computeVertexNormals();
 
-      const mesh = new THREE.Mesh(gm, ceramic);
-      mesh.castShadow = false;
-      shards.add(mesh);
-
       const jx = (R() - 0.5) * 0.5, jy = (R() - 0.5) * 0.5, jz = (R() - 0.5) * 0.5;
       const sp = 0.6 + R() * 0.9;
+      shardGeos.push(gm);
       shardData.push({
-        mesh,
+        geo: gm,
         base: new THREE.Vector3(PIG.x + cen.x, PIG.y + cen.y, PIG.z + cen.z),
         v: new THREE.Vector3(nrm.x * sp + jx, nrm.y * sp + 0.95 + jy, nrm.z * sp + jz),
         w: new THREE.Vector3((R() - 0.5) * 9, (R() - 0.5) * 9, (R() - 0.5) * 9)
@@ -179,14 +177,41 @@ export function buildIntro(scene, M, glowSprite, emis) {
     }
     // loose parts fly whole
     for (const [ox, oy, oz, rr] of [[-0.155, 0.29, 0.11, 0.075], [0.155, 0.29, 0.11, 0.075], [0, -0.02, 0.36, 0.11]]) {
-      const m = new THREE.Mesh(new THREE.SphereGeometry(rr, 10, 8), ceramic);
-      shards.add(m);
+      const g2 = new THREE.SphereGeometry(rr, 10, 8);
+      shardGeos.push(g2);
       shardData.push({
-        mesh: m,
+        geo: g2,
         base: new THREE.Vector3(PIG.x + ox, PIG.y + oy, PIG.z + oz),
         v: new THREE.Vector3((R() - 0.5) * 1.3, 1.35 + R() * 0.7, (R() - 0.5) * 1.3 - 0.6),
         w: new THREE.Vector3((R() - 0.5) * 10, (R() - 0.5) * 10, (R() - 0.5) * 10)
       });
+    }
+  }
+
+  // ── 39 · one draw call per batch instead of one per shard ──────
+  // Each shard has its own geometry, so a single InstancedMesh is out. But the
+  // burst is 131 objects on screen for about a second and it is the heaviest
+  // moment on the site — the same moment the cursor felt worst. Batching them
+  // by shape takes it from 131 draws to BATCHES, and since every shard moves by
+  // a rigid transform computed analytically from flight time, all that changes
+  // is writing a matrix instead of setting position/rotation on a Mesh.
+  const BATCHES = 8;
+  const batches = [];
+  {
+    const per = Math.ceil(shardData.length / BATCHES);
+    for (let b = 0; b < BATCHES; b++) {
+      const from = b * per, to = Math.min(shardData.length, from + per);
+      if (from >= to) break;
+      // every shard in a batch renders with the first one's geometry; at this
+      // size and speed the repetition is not readable, and the alternative is
+      // 131 draws
+      const im = new THREE.InstancedMesh(shardData[from].geo, ceramic, to - from);
+      im.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      im.frustumCulled = false;
+      im.castShadow = false;
+      shards.add(im);
+      for (let i = from; i < to; i++) { shardData[i].im = im; shardData[i].ii = i - from; }
+      batches.push(im);
     }
   }
 
@@ -572,14 +597,18 @@ export function buildIntro(scene, M, glowSprite, emis) {
     contact.material.opacity = broken ? 0.85 * (1 - clamp01(t0 * 2.2)) : 0.85;
 
     if (broken) {
-      for (const s of shardData) {
-        ballistic(tv, s.base.x, s.base.y, s.base.z, s.v.x, s.v.y, s.v.z, flight);
-        s.mesh.position.copy(tv);
-        s.mesh.rotation.set(s.w.x * flight, s.w.y * flight, s.w.z * flight);
-        const fade = clamp01((p - SHARD_FADE[0]) / (SHARD_FADE[1] - SHARD_FADE[0]));
-        s.mesh.scale.setScalar(1 - fade);
-        s.mesh.visible = fade < 1;
+      const fade = clamp01((p - SHARD_FADE[0]) / (SHARD_FADE[1] - SHARD_FADE[0]));
+      const sc = Math.max(0, 1 - fade);
+      ts.set(sc, sc, sc);
+      for (const sd of shardData) {
+        ballistic(tv, sd.base.x, sd.base.y, sd.base.z, sd.v.x, sd.v.y, sd.v.z, flight);
+        te.set(sd.w.x * flight, sd.w.y * flight, sd.w.z * flight);
+        tq.setFromEuler(te);
+        tm.compose(tv, tq, ts);
+        sd.im.setMatrixAt(sd.ii, tm);
       }
+      for (const im of batches) im.instanceMatrix.needsUpdate = true;
+      shards.visible = fade < 1;
     }
 
     // ---- coins ----

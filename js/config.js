@@ -37,7 +37,7 @@ export const DOORS = [
 const carrier = (o) => ({ ...o, h: o.w * o.el[1] / o.el[0] });
 
 export const CARRIER = {
-  sheet:  carrier({ room: 'office',  el: [1120, 700], w: 0.50, pos: [0, 0.8137, 4.26], elev: 72 * D, fitH: 0.72, fitW: 0.84 }),
+  sheet:  carrier({ room: 'office',  el: [1120, 700], w: 0.50, pos: [0, 0.8137, 4.26], elev: 72 * D, fitH: 0.62, fitW: 0.76 }),
   board:  carrier({ room: 'trading', el: [1240, 700], w: 2.60, pos: [0, 1.7500, 15.83], elev: 0 * D, fitH: 0.66, fitW: 0.80 }),
   spread: carrier({ room: 'study',   el: [1080, 700], w: 0.46, pos: [0, 1.0010, 20.15], elev: 33.7 * D, fitH: 0.66, fitW: 0.80 }),
   card:   carrier({ room: 'rooftop', el: [1160, 660], w: 0.42, pos: [0, 0.8673, 27.10], elev: 12 * D, fitH: 0.58, fitW: 0.80 }),
@@ -199,13 +199,12 @@ export const TIMELINE = [
 // Every p the camera is allowed to come to rest at, in order. Navigation
 // always travels to the NEXT/PREVIOUS entry here and stops exactly on it —
 // that is what stops a gesture stranding you mid-corridor.
+// The vault-open hold used to be station 0, which is why the first input
+// opened the door and a second was needed to actually go anywhere. The door
+// still opens — it happens during the travel now, in one continuous move —
+// but it is no longer a place the camera stops.
 export const STATIONS = [
-  0.300,   // vault, door open
-  0.470,   // office — tear sheet
-  0.640,   // trading — board
-  0.810,   // study — book
-  0.955,   // rooftop — contact card
-  1.000    // rooftop — message pad
+  0.470, 0.640, 0.810, 0.955, 1.000
 ];
 
 // Scroll blocks. Holds own a snap point; moves are short.
