@@ -67,7 +67,7 @@ if (new URLSearchParams(location.search).get('debug') === '1') {
 // from before it existed — these look identical from the outside. BUILD is
 // bumped on every deploy that changes behaviour, so if the number here is not
 // the current one, the page is stale and nothing else it says can be trusted.
-const BUILD = '2026-08-16-rects-3';
+const BUILD = '2026-08-16-cssbust-4';
 if (new URLSearchParams(location.search).get('diag') === '1') {
   // Attach immediately if the body already exists, and via the event if not.
   // main.js is a module with top-level await, so it can resume after
@@ -107,6 +107,12 @@ if (new URLSearchParams(location.search).get('diag') === '1') {
                  T.renderer.domElement.style.height + '   pr ' + T.renderer.getPixelRatio());
           r.push('sheetScl ' + (it ? it.obj.scale.x.toFixed(6) : '?') +
                  '   camAsp ' + T.camera.aspect.toFixed(3));
+          // Proves whether panels.css is fresh. --muted lives in index.html's
+          // own <style>, so it can read correct while the stylesheet is stale;
+          // this reads a value only the portrait rules set.
+          const hdr = document.querySelector('#sheet .hdr');
+          r.push('cssFresh ' + (hdr ? getComputedStyle(hdr).flexDirection : '?') +
+                 '   (expect column)');
           return r.join('\n');
         })();
     };
