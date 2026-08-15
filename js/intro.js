@@ -5,7 +5,6 @@ import { BEAT, VAULT_Y, VAULT_R, INTRO_VISIBLE_UNTIL } from './config.js';
 // Sub-beat windows derived from BEAT so compressing/expanding the intro
 // timeline in config.js cascades here automatically — nothing below is
 // a bare magic number tied to one specific timeline scale.
-const HAMMER_FOLLOW = 0.038;                                  // post-impact bounce-out
 const SHARD_FADE = [BEAT.fall[1], BEAT.fall[1] + 0.032];
 const COIN_VANISH = [BEAT.gather[1], BEAT.gather[1] + 0.015];
 const IMPACT_FLASH = 0.021;
@@ -233,28 +232,28 @@ export function buildIntro(scene, M, glowSprite, emis) {
     }
   }
 
-  // ══════════ 4 · HAMMER ══════════
-  const hammer = new THREE.Group(); G.add(hammer);
+  // ══════════ 4 · THE LAST DEPOSIT ══════════
+  // There is no hammer any more. A single coin falls out of the dark, goes
+  // through the slot, and the bank bursts because it is full — which is the
+  // only version of this that is a story rather than an event, and the pedestal
+  // has said FIRST DEPOSIT the whole time. It also retires the gavel that was
+  // left hanging in mid-air with a spotlight on nothing.
+  const faller = new THREE.Group(); G.add(faller);
   {
-    // A gavel, not a claw hammer: this is the first object on screen and a
-    // generic hardware-store hammer said nothing about the subject. Walnut
-    // shaft, banded barrel head, brass collar and strike rings.
-    const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.017, 0.022, 0.58, 16), M.walnut);
-    handle.position.set(0, -0.30, 0); hammer.add(handle);
-    const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.026, 0.030, 16), M.brass);
-    collar.position.set(0, -0.045, 0); hammer.add(collar);
-    const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.023, 0.17, 16), M.leatherOx);
-    grip.position.set(0, -0.50, 0); hammer.add(grip);
-    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.024, 14, 10), M.brass);
-    cap.position.set(0, -0.585, 0); hammer.add(cap);
-    const head = new THREE.Mesh(new THREE.CylinderGeometry(0.062, 0.062, 0.235, 24), M.walnut);
-    head.position.set(0, 0.02, 0); head.rotation.z = Math.PI / 2; hammer.add(head);
-    for (const sx of [-1, 1]) {
-      const band = new THREE.Mesh(new THREE.CylinderGeometry(0.0645, 0.0645, 0.028, 24), M.brass);
-      band.position.set(sx * 0.098, 0.02, 0); band.rotation.z = Math.PI / 2; hammer.add(band);
-    }
-    hammer.traverse(o => { if (o.isMesh) { o.castShadow = false; } });
+    const big = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.085, 0.011, 40), coinMat);
+    big.rotation.x = Math.PI / 2;
+    faller.add(big);
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.085, 0.006, 8, 40), coinMat);
+    faller.add(rim);
+    const face = new THREE.Mesh(new THREE.CircleGeometry(0.062, 32),
+      new THREE.MeshStandardMaterial({ color: 0xe8c667, metalness: 1.0, roughness: 0.34, envMapIntensity: 1.5 }));
+    face.position.z = -0.007; faller.add(face);
+    faller.traverse(o => { if (o.isMesh) o.castShadow = false; });
   }
+  // its own light, so the coin is a source rather than merely lit — the seed
+  // of the gold-only lighting below
+  const fallerLight = new THREE.PointLight(0xffcf7a, 0, 2.4, 2);
+  G.add(fallerLight);
 
   // ══════════ 5 · VAULT DOOR ══════════
   const hinge = new THREE.Group();
@@ -375,6 +374,16 @@ export function buildIntro(scene, M, glowSprite, emis) {
     new THREE.MeshBasicMaterial({ color: 0xffd98a, transparent: true, opacity: 0, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false, fog: false })
   );
   shock.position.set(0, VAULT_Y, -0.10); G.add(shock);
+  // 34 · the burst's own ring + a hard wide flash to reveal the chamber
+  const blastRing = new THREE.Mesh(
+    new THREE.RingGeometry(0.55, 0.72, 96),
+    new THREE.MeshBasicMaterial({ color: 0xffd489, transparent: true, opacity: 0,
+      blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }));
+  blastRing.position.set(PIG.x, PIG.y, PIG.z - 0.02);
+  blastRing.visible = false; G.add(blastRing);
+  const blastLight = new THREE.PointLight(0xffdca0, 0, 22, 1.35);
+  blastLight.position.set(PIG.x, PIG.y, PIG.z); G.add(blastLight);
+
   const flash = new THREE.PointLight(0xffd08a, 0, 8, 2);
   flash.position.set(0, VAULT_Y, -0.6); G.add(flash);
   const impactGlow = glowSprite(0xfff0c8, 1.6, 0); G.add(impactGlow);
@@ -384,6 +393,27 @@ export function buildIntro(scene, M, glowSprite, emis) {
   // position every frame. Decays to exactly zero outside the impact
   // window, so it's harmless to always add.
   const shakeVec = new THREE.Vector3();
+
+  // ── 26 · gold is the only light source ────────────────────────
+  // At the moment of the burst the room's own lights are cut and the shards
+  // and coins become emissive, so for about a second the chamber is lit by
+  // nothing but flying money. The walls flash into view as it passes and go
+  // dark again behind it. The gold then gathers and becomes the door's rim
+  // light: dark → gold → vault, which is the whole idea in one move.
+  //
+  // main.js hands us the antechamber lights to dim; we restore them as the
+  // door forges rather than snapping back, so the recovery reads as the vault
+  // lighting itself rather than someone flicking a switch.
+  let roomLights = [];
+  const roomBase = [];
+  function bindRoomLights(list) {
+    roomLights = list || [];
+    roomBase.length = 0;
+    for (const l of roomLights) roomBase.push(l.intensity);
+  }
+  const burstLight = new THREE.PointLight(0xffc257, 0, 7.0, 1.7);
+  burstLight.position.set(PIG.x, PIG.y, PIG.z);
+  G.add(burstLight);
 
   // ── reusable temporaries ──
   const tv = new THREE.Vector3(), tq = new THREE.Quaternion(),
@@ -398,11 +428,14 @@ export function buildIntro(scene, M, glowSprite, emis) {
     return out;
   };
 
-  // hammer arc (enters from off-frame right)
-  const hA = new THREE.Vector3(2.15, 2.32, 0.06);
-  const hB = new THREE.Vector3(1.25, 2.14, 0.06);
-  const hC = new THREE.Vector3(0.05, 1.79, 0.06);
-  const hUp = new THREE.Vector3(2.55, 2.62, 0.06);
+  // The coin's fall: high and off-centre, drifting in as it drops so the last
+  // stretch is nearly vertical over the slot.
+  // y is capped just above the top of frame, not "high in the room": from the
+  // intro stop the camera sees roughly y 0.49..2.27, so a coin released at 3.3
+  // spends the whole windup out of shot and simply appears. It has to enter.
+  const cFrom = new THREE.Vector3(0.30, 2.34, -0.18);
+  const cMid  = new THREE.Vector3(0.13, 1.98, -0.05);
+  const cSlot = new THREE.Vector3(0, PIG.y + PR - 0.02, 0.045);
 
   // ── the update ────────────────────────────────────────────────
   function update(p) {
@@ -413,23 +446,41 @@ export function buildIntro(scene, M, glowSprite, emis) {
     const t0 = (p - BEAT.impact) / (BEAT.fall[1] - BEAT.impact);      // 0..1 across burst+fall
     const flight = Math.max(0, t0) * 1.05;                            // seconds
 
-    // ---- hammer ----
+    // ---- the falling coin ----
     if (p < BEAT.impact) {
-      const w = span(p, BEAT.windup), s = span(p, BEAT.strike);
-      if (s <= 0) {
-        hammer.position.lerpVectors(hA, hUp, sstep(w));
-        hammer.rotation.z = -1.34 - w * 0.30;
-      } else {
-        const e = s * s;                                              // accelerate into the hit
-        bezier(hUp, hB, hC, e, hammer.position);
-        hammer.rotation.z = -1.64 + e * 1.52;
-      }
-      hammer.visible = true;
+      // windup is the long slow drop, strike the last few centimetres
+      const w = span(p, BEAT.windup), st = span(p, BEAT.strike);
+      const fall = st <= 0 ? w * 0.86 : 0.86 + st * 0.14;
+      bezier(cFrom, cMid, cSlot, fall * fall, faller.position);
+      faller.rotation.set(fall * 7.5, fall * 11.0, fall * 2.2);
+      faller.visible = true;
+      fallerLight.position.copy(faller.position);
+      fallerLight.intensity = 0.6 + fall * fall * 5.5;
     } else {
-      const r = clamp01((p - BEAT.impact) / HAMMER_FOLLOW);
-      hammer.position.set(hC.x + r * 1.5, hC.y + r * 0.9 - r * r * 1.6, hC.z - r * 0.4);
-      hammer.rotation.z = -0.12 - r * 3.4;
-      hammer.visible = r < 1;
+      faller.visible = false;
+      fallerLight.intensity = 0;
+    }
+
+    // ---- 26 · the lighting event ----
+    // Blackout runs from the impact through the fall; recovery is tied to the
+    // forge, so the room comes back up as the door does.
+    {
+      const cut = clamp01((p - BEAT.impact) / 0.006);              // near-instant
+      const back = sstep(clamp01((p - BEAT.forge[0]) / (BEAT.dial[1] - BEAT.forge[0])));
+      const dim = Math.max(0, 1 - cut) + cut * back;
+      for (let i = 0; i < roomLights.length; i++) {
+        roomLights[i].intensity = roomBase[i] * (0.06 + 0.94 * dim);
+      }
+      // the burst itself: bright at the hit, decaying across the fall
+      const bl = clamp01((p - BEAT.impact) / (BEAT.fall[1] - BEAT.impact));
+      burstLight.intensity = p >= BEAT.impact && p < BEAT.gather[1]
+        ? 26 * Math.pow(1 - bl, 1.5) : 0;
+      // emissive gold while the room is dark, fading as the lights return
+      const glow = clamp01(1 - back) * (p >= BEAT.impact ? 1 : 0);
+      coinMat.emissive.setHex(0x6b4a12);
+      coinMat.emissiveIntensity = glow * 1.5;
+      ceramic.emissive.setHex(0x3a2418);
+      ceramic.emissiveIntensity = glow * 0.5 * clamp01(1 - (p - BEAT.impact) / 0.05);
     }
 
     // ---- piggy / shards ----
@@ -485,6 +536,24 @@ export function buildIntro(scene, M, glowSprite, emis) {
     blackout.material.opacity = 1 - bo;
     blackout.visible = bo < 1;
 
+    // ---- 34 · impact shockwave ----
+    // A second ring, at the BURST rather than the forge, expanding fast and
+    // wide. Its job is not to be seen as a ring so much as to throw light on
+    // the pilasters for a few frames — you register the size of the chamber
+    // once, then it is dark again.
+    {
+      const sw = clamp01((p - BEAT.impact) / (BEAT.burst[1] - BEAT.impact));
+      const on = p >= BEAT.impact && sw < 1;
+      blastRing.visible = on;
+      if (on) {
+        blastRing.scale.setScalar(0.2 + sw * 9.0);
+        blastRing.material.opacity = Math.pow(1 - sw, 2.2) * 0.85;
+        blastLight.intensity = Math.pow(1 - sw, 3.0) * 60;
+      } else {
+        blastLight.intensity = 0;
+      }
+    }
+
     // ---- door forge ----
     const fg = span(p, BEAT.forge);
     hinge.visible = fg > 0;
@@ -528,5 +597,5 @@ export function buildIntro(scene, M, glowSprite, emis) {
     }
   }
 
-  return { update, group: G, shake: shakeVec };
+  return { update, group: G, shake: shakeVec, bindRoomLights };
 }

@@ -38,6 +38,7 @@ export function buildWorld(scene, market = null) {
   const root = new THREE.Group();
   scene.add(root);
   const anim = [];
+  const anteLights = [];   // handed to the intro, which cuts them at the burst
   const glowTex = TEX.glowTexture();
 
   // ── material library ──────────────────────────────────────────
@@ -201,14 +202,14 @@ export function buildWorld(scene, market = null) {
     key.position.set(-1.5, 3.6, -2.2); key.target.position.set(0, 1.32, 0.05);
     key.castShadow = true; key.shadow.mapSize.set(1024, 1024);
     key.shadow.camera.near = 0.4; key.shadow.camera.far = 11; key.shadow.bias = -0.0012;
-    G.add(key, key.target);
+    G.add(key, key.target); anteLights.push(key);
 
     const rim = new THREE.SpotLight(0x7fa6f5, 13, 9, 0.62, 0.7, 1.6);
     rim.position.set(2.6, 2.2, -2.9); rim.target.position.set(0, 1.35, 0.05);
-    G.add(rim, rim.target);
+    G.add(rim, rim.target); anteLights.push(rim);
 
     const fill = new THREE.PointLight(0xffc98a, 1.1, 7, 2);
-    fill.position.set(0, 1.1, -3.4); G.add(fill);
+    fill.position.set(0, 1.1, -3.4); G.add(fill); anteLights.push(fill);
 
     // ── 15 · uplights: the change that makes this a room ──────────
     // Grazing light up the face of the wall. Shadowless and cheap, but it is
@@ -218,7 +219,7 @@ export function buildWorld(scene, market = null) {
       const up = new THREE.SpotLight(0x9fb4d8, 34, 9.5, 0.52, 0.80, 1.35);
       up.position.set(x, 0.06, -0.72);
       up.target.position.set(x, 5.0, -0.06);
-      G.add(up, up.target);
+      G.add(up, up.target); anteLights.push(up);
       // a visible fitting, so the light has a source in frame
       G.add(sc(at(CY(0.055, 0.070, 0.045, M.darkSteel, 12), x, 0.022, -0.72)));
     }
@@ -290,7 +291,7 @@ export function buildWorld(scene, market = null) {
       const pl = new THREE.SpotLight(0xffe2b4, 9, 3.2, 0.72, 0.85, 1.5);
       pl.position.set(1.93, 2.62, -0.66);
       pl.target.position.set(1.93, 1.50, -0.06);
-      G.add(pl, pl.target);
+      G.add(pl, pl.target); anteLights.push(pl);
       // little brass hood so the light has a visible source
       G.add(sc(at(CY(0.040, 0.052, 0.13, M.brass, 12), 1.93, 2.60, -0.64, Math.PI / 2.6)));
       G.add(sc(at(B(0.032, 0.30, 0.032, M.brass), 1.93, 2.42, -0.36)));
@@ -298,7 +299,7 @@ export function buildWorld(scene, market = null) {
       const sl = new THREE.SpotLight(0xdfe8ff, 7, 3.0, 0.80, 0.9, 1.5);
       sl.position.set(0, 3.62, -0.70);
       sl.target.position.set(0, 2.92, -0.06);
-      G.add(sl, sl.target);
+      G.add(sl, sl.target); anteLights.push(sl);
     }
   }
 
@@ -951,5 +952,5 @@ export function buildWorld(scene, market = null) {
     const bounceR = new THREE.PointLight(0xff9f60, 2.0, 12, 2); bounceR.position.set(-2.4, 1.2, 29); rooftop.add(bounceR);
   }
 
-  return { root, anim, M, glowSprite, emis };
+  return { root, anim, M, glowSprite, emis, anteLights };
 }

@@ -123,6 +123,8 @@ if (MARKET && MARKET.personal) {
 step(52, 'Forging the vault');
 await paint();
 const intro = buildIntro(scene, world.M, world.glowSprite, world.emis);
+// the intro cuts these at the burst so the only light is flying gold
+intro.bindRoomLights(world.anteLights);
 
 // ═══════════════════ post-processing ═══════════════════
 // Bloom for the gold/coin/lamp glow, then a vignette+grain pass. CSS3D
@@ -150,17 +152,39 @@ if (!NO_POST) {
 }
 
 const GrainVignetteShader = {
-  uniforms: { tDiffuse: { value: null }, uTime: { value: 0 }, uAmt: { value: 1 } },
+  uniforms: { tDiffuse: { value: null }, uTime: { value: 0 }, uAmt: { value: 1 }, uHit: { value: 0 } },
   vertexShader: /* glsl */`
     varying vec2 vUv;
     void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
   fragmentShader: /* glsl */`
-    uniform sampler2D tDiffuse; uniform float uTime; uniform float uAmt;
+    uniform sampler2D tDiffuse; uniform float uTime; uniform float uAmt; uniform float uHit;
     varying vec2 vUv;
     float hash(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453123); }
     void main(){
-      vec4 c = texture2D(tDiffuse, vUv);
       vec2 d = vUv - 0.5;
+      // 38 · impact pulse. Both effects scale with distance from centre, so the
+      // frame tears at the edges and the subject stays readable — a uniform
+      // smear just looks like the renderer broke.
+      vec4 c;
+      if (uHit > 0.001) {
+        float amt = uHit * 0.020;
+        vec2 dir = d * amt;
+        // radial blur: a few taps back toward centre
+        vec4 acc = vec4(0.0);
+        for (int i = 0; i < 5; i++) {
+          float f = float(i) / 4.0;
+          acc += texture2D(tDiffuse, vUv - dir * f * 1.6);
+        }
+        acc *= 0.2;
+        // chromatic aberration: channels sampled at different offsets
+        c.r = texture2D(tDiffuse, vUv + dir * 1.30).r;
+        c.g = acc.g;
+        c.b = texture2D(tDiffuse, vUv - dir * 1.30).b;
+        c.a = 1.0;
+        c.rgb = mix(acc.rgb, c.rgb, 0.75);
+      } else {
+        c = texture2D(tDiffuse, vUv);
+      }
       float vig = 1.0 - smoothstep(0.35, 0.98, dot(d,d) * 1.55);
       c.rgb *= mix(1.0, vig, 0.34 * uAmt);
       float g = (hash(vUv * vec2(1920.0,1080.0) + fract(uTime)) - 0.5) * 0.045 * uAmt;
@@ -522,6 +546,24 @@ let introTimeline = null;
 let introStarted = false;
 let breakOffered = false;
 const breakBtn = document.getElementById('breakBtn');
+const titleCard = document.getElementById('titlecard');
+
+// 37 · scatter the letters. Each gets a vector away from centre so the name
+// comes apart the way the ceramic does rather than simply fading.
+function burstTitle() {
+  if (!titleCard) return;
+  const letters = titleCard.querySelectorAll('.tc-name span');
+  const n = letters.length;
+  letters.forEach((el, i) => {
+    const dir = (i - (n - 1) / 2) / Math.max(1, (n - 1) / 2);   // -1..1
+    el.style.setProperty('--tx', (dir * (140 + Math.random() * 220)).toFixed(0) + 'px');
+    el.style.setProperty('--ty', ((Math.random() - 0.62) * 260).toFixed(0) + 'px');
+    el.style.setProperty('--rz', ((Math.random() - 0.5) * 90).toFixed(0) + 'deg');
+    el.style.setProperty('--o', '0');
+  });
+  titleCard.classList.add('burst');
+  setTimeout(() => titleCard.classList.remove('show'), 900);
+}
 breakBtn.classList.add('hide');
 
 function startSmash() {
@@ -585,11 +627,23 @@ if (LOCKED !== null || WANT_RESUME) {
     return acc;
   };
   const tImpact = beatTime(C.BEAT.impact);
+
+  // ── 30 · time ramp ────────────────────────────────────────────
+  // Drop into slow motion just before contact and snap back once the shards
+  // are away. Scaling the timeline rather than the physics keeps everything —
+  // camera, shards, coins, audio scheduling — in lockstep, because all of it
+  // is driven from the same p.
+  tl.call(() => {
+    gsap.to(tl, { timeScale: 0.16, duration: 0.10, ease: 'power2.out', overwrite: true });
+  }, null, Math.max(0, tImpact - 0.10));
+  tl.call(() => {
+    gsap.to(tl, { timeScale: 1.0, duration: 0.55, ease: 'power2.inOut', overwrite: true });
+  }, null, tImpact + 0.16);
   // The swell has to START early enough to ARRIVE on the hit — that lead is
   // what makes the impact feel authored instead of merely triggered.
   tl.call(() => AUDIO.smashSwell(1.1), null, Math.max(0, tImpact - 1.1));
   tl.call(() => AUDIO.preImpactSilence(0.26), null, Math.max(0, tImpact - 0.26));
-  tl.call(() => AUDIO.impactThunk(), null, tImpact);
+  tl.call(() => { AUDIO.impactThunk(); burstTitle(); }, null, tImpact);
   tl.call(() => AUDIO.shardScatter(1.2, 26), null, tImpact + 0.02);
   tl.call(() => AUDIO.coinCascade(C.INTRO_PACING.find(x => x.key === 'gather').dur, 18), null, beatTime(C.BEAT.gather[0]));
   tl.call(() => AUDIO.coinSettle(0.15, -0.5), null, beatTime(C.BEAT.fall[1]));
@@ -610,6 +664,7 @@ if (LOCKED !== null || WANT_RESUME) {
     p = C.INTRO_END;
     breakBtn.classList.add('hide');
     AUDIO.uiClick();
+    if (titleCard) titleCard.classList.remove('show');
     handoff();
   });
 }
@@ -933,6 +988,13 @@ function frame(now) {
   }
   grainPass.uniforms.uTime.value = now * 0.001;
   grainPass.uniforms.uAmt.value = REDUCED_MOTION ? 0.4 : 1.0;
+  // pulse rides the same p the shake does, so it lands exactly on contact
+  {
+    const w = 0.030;
+    const k = (p >= C.BEAT.impact && p < C.BEAT.impact + w)
+      ? Math.pow(1 - (p - C.BEAT.impact) / w, 2.0) : 0;
+    grainPass.uniforms.uHit.value = REDUCED_MOTION ? 0 : k;
+  }
 
   if (firstFrame) { renderer.shadowMap.needsUpdate = true; }
   if (NO_POST) renderer.render(scene, camera);
@@ -985,6 +1047,8 @@ function frame(now) {
   // The smash waits for the visitor to press the button (see breakBtn).
   if (loaderDone && !breakOffered && introTimeline) {
     breakOffered = true;
+    // the name sits over the dark chamber alongside the invitation to break it
+    if (titleCard) titleCard.classList.add('show');
     breakBtn.classList.remove('hide');
   }
   requestAnimationFrame(frame);
