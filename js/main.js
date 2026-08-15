@@ -67,9 +67,12 @@ if (new URLSearchParams(location.search).get('debug') === '1') {
 // from before it existed — these look identical from the outside. BUILD is
 // bumped on every deploy that changes behaviour, so if the number here is not
 // the current one, the page is stale and nothing else it says can be trusted.
-const BUILD = '2026-08-16-portrait-1';
+const BUILD = '2026-08-16-mobile-2';
 if (new URLSearchParams(location.search).get('diag') === '1') {
-  addEventListener('DOMContentLoaded', () => {
+  // Attach immediately if the body already exists, and via the event if not.
+  // main.js is a module with top-level await, so it can resume after
+  // DOMContentLoaded has already fired — a listener alone can silently miss.
+  const mount = () => {
     const d = document.createElement('div');
     d.style.cssText = 'position:fixed;z-index:99999;left:8px;right:8px;top:8px;' +
       'background:rgba(4,4,6,.94);color:#7dffa8;font:12px/1.7 ui-monospace,monospace;' +
@@ -91,7 +94,9 @@ if (new URLSearchParams(location.search).get('diag') === '1') {
     };
     upd(); setInterval(upd, 1000);
     document.body.appendChild(d);
-  });
+  };
+  if (document.body) mount();
+  else addEventListener('DOMContentLoaded', mount);
 }
 
 // ═══════════════════ renderers ═══════════════════
@@ -104,7 +109,10 @@ renderer.setSize(innerWidth, innerHeight);
 renderer.setClearColor(0x08070a, 1);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.0;
-renderer.shadowMap.enabled = true;
+// Shadows off on touch devices. One 1024x1024 depth pass is a large fraction of
+// a mobile frame, and the site's only shadow caster lights a room the visitor
+// passes through in seconds.
+renderer.shadowMap.enabled = !matchMedia('(pointer: coarse)').matches;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.shadowMap.autoUpdate = false;
 // A WebGL canvas announces nothing to a screen reader; the label is the only
@@ -114,6 +122,19 @@ renderer.domElement.setAttribute('aria-label',
   'A vault interior rendered in 3D. Scroll or use the top navigation to travel ' +
   'between four rooms: Experience, Projects, The Book, and Contact. All text ' +
   'content is available as real text on the panels within each room.');
+// iOS reclaims WebGL contexts under memory pressure, and an unhandled loss is
+// a permanently black page. Prevent the default so the browser will restore it,
+// then re-establish the render state when it comes back.
+renderer.domElement.addEventListener('webglcontextlost', (e) => {
+  e.preventDefault();
+  console.warn('WebGL context lost — waiting for restore');
+}, false);
+renderer.domElement.addEventListener('webglcontextrestored', () => {
+  console.warn('WebGL context restored');
+  renderer.shadowMap.needsUpdate = true;
+  try { resize(); } catch (err) { /* resize needs panels; harmless before build */ }
+}, false);
+
 document.getElementById('gl').appendChild(renderer.domElement);
 
 const cssRenderer = new CSS3DRenderer();
@@ -194,7 +215,11 @@ composer.addPass(new RenderPass(scene, camera));
 // 0.55 it smeared a quarter of the frame regardless of strength.
 let bloomPass = null;
 if (!NO_POST) {
-  bloomPass = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.18, 0.28, 0.96);
+  // Half resolution. Bloom is a blur — it has no high-frequency detail to lose,
+  // so running its render targets at half width and height cuts the fragment
+  // work by 75% for no visible difference. This is the single cheapest win in
+  // the whole post chain and it applies on every device, not just phones.
+  bloomPass = new UnrealBloomPass(new THREE.Vector2(innerWidth / 2, innerHeight / 2), 0.18, 0.28, 0.96);
   composer.addPass(bloomPass);
 }
 
@@ -888,7 +913,7 @@ function applyQuality(tier) {
     renderer.setPixelRatio(want);
     renderer.setSize(w, h);
     composer.setSize(w, h);
-    if (bloomPass) bloomPass.setSize(w, h);
+    if (bloomPass) bloomPass.setSize(w / 2, h / 2);
   }
   if (bloomPass) bloomPass.enabled = q.bloom;
   if (bokehPass) bokehPass.enabled = q.bokeh;
@@ -919,7 +944,7 @@ function setIntroCheap(on, wantBokeh) {
       renderer.setPixelRatio(want);
       renderer.setSize(w, h);
       composer.setSize(w, h);
-      if (bloomPass) bloomPass.setSize(w, h);
+      if (bloomPass) bloomPass.setSize(w / 2, h / 2);
     }
   }
   // enabled is a plain flag — toggling it costs nothing, no reallocation
@@ -1116,10 +1141,22 @@ function activate(el) {
 // bottom band and desynced CSS3D panel in this project traced back to sizing
 // the renderer from innerHeight while the canvas was laid out to something else.
 function viewportSize() {
+  // visualViewport first. On iOS the URL bar collapses as you scroll and the
+  // LAYOUT viewport does not change with it — a fixed inset:0 element keeps
+  // reporting the tall value, so the canvas renders taller than what is
+  // actually on screen and everything sits slightly too low. visualViewport is
+  // the only measurement that tracks the bar.
+  const vv = window.visualViewport;
+  if (vv && vv.width > 0) return { w: Math.max(1, vv.width), h: Math.max(1, vv.height) };
   const el = renderer.domElement.parentElement;
-  const w = (el && el.clientWidth) || innerWidth;
-  const h = (el && el.clientHeight) || innerHeight;
-  return { w: Math.max(1, w), h: Math.max(1, h) };
+  return { w: Math.max(1, (el && el.clientWidth) || innerWidth),
+           h: Math.max(1, (el && el.clientHeight) || innerHeight) };
+}
+if (window.visualViewport) {
+  // resize AND scroll: the bar collapses on scroll without firing resize
+  addEventListener('resize', () => {}, { passive: true });
+  visualViewport.addEventListener('resize', () => resize(), { passive: true });
+  visualViewport.addEventListener('scroll', () => resize(), { passive: true });
 }
 
 function resize() {
@@ -1129,7 +1166,7 @@ function resize() {
   renderer.setSize(VW, VH);
   cssRenderer.setSize(VW, VH);
   composer.setSize(VW, VH);
-  if (bloomPass) bloomPass.setSize(VW, VH);
+  if (bloomPass) bloomPass.setSize(VW / 2, VH / 2);
   computeStops(); buildCurves(); panels.orient();
 }
 addEventListener('resize', resize);
