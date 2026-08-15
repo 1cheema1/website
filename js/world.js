@@ -962,28 +962,134 @@ export function buildWorld(scene, market = null) {
   // 51 · rooms exposed so the loop can drop the ones out of range. Each is a
   // single Group, so hiding one skips its whole subtree in one test rather than
   // frustum-culling every mesh inside it.
-  // ── lights live OUTSIDE the cullable rooms ────────────────────
-  // This is load-bearing. three.js compiles a program per material against the
-  // number of lights in the scene, and it skips invisible subtrees when it
-  // gathers them — so hiding a room that contains lights changes the count and
-  // forces EVERY material to recompile. That is a multi-millisecond stall, and
-  // it fires exactly at a room boundary, which is exactly where the camera is
-  // moving. The result was a hitch on every transition.
+  // ── a fixed pool of lights, repositioned per room ─────────────
+  // The scene had 31 lights. Every fragment of every lit material loops over
+  // all of them regardless of where they are, so the study's desk lamp was
+  // being evaluated on pixels of the vault door. Fragment cost scales with
+  // light count times screen pixels, and it was the largest remaining cost on
+  // the site.
   //
-  // attach() re-parents while preserving the world transform, so nothing moves.
-  // Sprites and glows stay behind and are still culled with their room; only
-  // the lights are hoisted, keeping the count constant for the whole visit.
+  // The lighting design is not rewritten — it is HARVESTED. Each room still
+  // authors its lights exactly as before; we then read them off into a preset
+  // and delete them. A small pool of real lights is assigned from whichever
+  // preset the camera is in. The count is constant (so nothing recompiles, the
+  // problem that hoisting solved) and small (so shading is cheap).
+  //
+  // When a room authored more lights than the pool has slots, the strongest
+  // survive — ranked by intensity times reach, which keeps keys and practicals
+  // and drops small decorative fills. Those were the ones you could least see.
   const lightRig = new THREE.Group(); root.add(lightRig);
-  for (const g of [anteGroup, office, trading, study, rooftop]) {
+
+  // Matrices must be current before any getWorldPosition: matrixWorld is only
+  // computed at render time, so harvesting straight after construction reads
+  // identity and puts every light at the origin. That lit the antechamber
+  // (which is at z~0) and left every other room black.
+  root.updateMatrixWorld(true);
+
+  const _wp = new THREE.Vector3(), _wt = new THREE.Vector3();
+  function describe(L) {
+    L.getWorldPosition(_wp);
+    const isHemi = !!L.isHemisphereLight;
+    return {
+      kind: L.isSpotLight ? 'spot' : L.isPointLight ? 'point'
+          : L.isDirectionalLight ? 'dir' : 'hemi',
+      pos: _wp.clone(),
+      tgt: (L.target && L.target.isObject3D) ? L.target.getWorldPosition(_wt).clone() : null,
+      color: L.color.clone(),
+      ground: isHemi ? L.groundColor.clone() : null,
+      intensity: L.intensity,
+      distance: L.distance || 0,
+      decay: L.decay === undefined ? 2 : L.decay,
+      angle: L.angle || 0.5,
+      penumbra: L.penumbra || 0,
+      castShadow: !!L.castShadow,
+      // reach stands in for "how much of the room does this actually light";
+      // an unbounded light (dir/hemi) is given a nominal large reach
+      weight: L.intensity * (L.distance || 14)
+    };
+  }
+
+  const presets = {};
+  for (const [name, g] of [['ante', anteGroup], ['office', office],
+                           ['trading', trading], ['study', study], ['rooftop', rooftop]]) {
     if (!g) continue;
     const found = [];
     g.traverse(o => { if (o.isLight) found.push(o); });
+    presets[name] = found.map(describe).sort((a, b) => b.weight - a.weight);
     for (const L of found) {
-      const tgt = L.target && L.target.isObject3D ? L.target : null;
-      lightRig.attach(L);
-      if (tgt && tgt.parent && tgt.parent !== lightRig) lightRig.attach(tgt);
+      if (L.target && L.target.parent) L.target.parent.remove(L.target);
+      if (L.parent) L.parent.remove(L);
     }
   }
+
+  const POOL = { spot: 3, point: 3, dir: 1, hemi: 1 };
+  const pool = { spot: [], point: [], dir: [], hemi: [] };
+  for (let i = 0; i < POOL.spot; i++) {
+    const L = new THREE.SpotLight(0xffffff, 0, 10, 0.5, 0.6, 1.6);
+    if (i === 0) {
+      // exactly one shadow caster in the whole scene
+      L.castShadow = true;
+      L.shadow.mapSize.set(1024, 1024);
+      L.shadow.camera.near = 0.4; L.shadow.camera.far = 14; L.shadow.bias = -0.0012;
+    }
+    lightRig.add(L, L.target); pool.spot.push(L);
+  }
+  for (let i = 0; i < POOL.point; i++) {
+    const L = new THREE.PointLight(0xffffff, 0, 6, 2); lightRig.add(L); pool.point.push(L);
+  }
+  for (let i = 0; i < POOL.dir; i++) {
+    const L = new THREE.DirectionalLight(0xffffff, 0); lightRig.add(L, L.target); pool.dir.push(L);
+  }
+  for (let i = 0; i < POOL.hemi; i++) {
+    const L = new THREE.HemisphereLight(0xffffff, 0x000000, 0); lightRig.add(L); pool.hemi.push(L);
+  }
+
+  function applyPreset(name) {
+    const list = presets[name] || [];
+    for (const kind of Object.keys(pool)) {
+      const want = list.filter(d => d.kind === kind).slice(0, pool[kind].length);
+      pool[kind].forEach((L, i) => {
+        const d = want[i];
+        if (!d) { L.userData.base = 0; return; }
+        L.userData.base = d.intensity;
+        L.color.copy(d.color);
+        L.position.copy(d.pos);
+        if (kind === 'hemi') { L.groundColor.copy(d.ground); return; }
+        if (L.target && d.tgt) { L.target.position.copy(d.tgt); L.target.updateMatrixWorld(); }
+        if (kind === 'spot') {
+          L.distance = d.distance; L.decay = d.decay;
+          L.angle = d.angle; L.penumbra = d.penumbra;
+        } else if (kind === 'point') {
+          L.distance = d.distance; L.decay = d.decay;
+        }
+      });
+    }
+  }
+
+  // Crossfade: dim everything, swap, bring it back. Repositioning a lit light
+  // in view reads as the room re-lighting itself; going dark for a third of a
+  // second in a doorway does not.
+  let curRoom = null, pendingRoom = null, fade = 1, phase = 'idle', master = 1;
+  function setLightingRoom(name) {
+    if (!name || name === curRoom || name === pendingRoom) return;
+    if (curRoom === null) { applyPreset(name); curRoom = name; fade = 1; return; }
+    pendingRoom = name; phase = 'out';
+  }
+  function setLightingMaster(v) { master = v; }
+  function updateLighting(dt) {
+    if (phase === 'out') {
+      fade -= dt / 0.35;
+      if (fade <= 0) { fade = 0; applyPreset(pendingRoom); curRoom = pendingRoom; pendingRoom = null; phase = 'in'; }
+    } else if (phase === 'in') {
+      fade += dt / 0.55;
+      if (fade >= 1) { fade = 1; phase = 'idle'; }
+    }
+    const k = fade * master;
+    for (const kind of Object.keys(pool)) {
+      for (const L of pool[kind]) L.intensity = (L.userData.base || 0) * k;
+    }
+  }
+  setLightingRoom('ante');
 
   const rooms = [
     { g: anteGroup, z0: ROOM.ante.z0,    z1: ROOM.ante.z1 },
@@ -993,5 +1099,6 @@ export function buildWorld(scene, market = null) {
     { g: rooftop,   z0: ROOM.rooftop.z0, z1: ROOM.rooftop.z1 }
   ].filter(r => r.g);
 
-  return { root, anim, M, glowSprite, emis, anteLights, rooms };
+  return { root, anim, M, glowSprite, emis, anteLights, rooms,
+           setLightingRoom, setLightingMaster, updateLighting };
 }

@@ -123,8 +123,10 @@ if (MARKET && MARKET.personal) {
 step(52, 'Forging the vault');
 await paint();
 const intro = buildIntro(scene, world.M, world.glowSprite, world.emis);
-// the intro cuts these at the burst so the only light is flying gold
-intro.bindRoomLights(world.anteLights);
+// The intro's blackout now drives the lighting pool's master rather than a
+// list of individual lights — the room's lights are pool slots, not objects
+// the intro can hold references to.
+intro.bindRoomLights(world.setLightingMaster);
 
 // ═══════════════════ post-processing ═══════════════════
 // Bloom for the gold/coin/lamp glow, then a vignette+grain pass. CSS3D
@@ -1167,6 +1169,13 @@ function frame(now) {
   // so anything past that is invisible anyway) and BEHIND is tight, since you
   // never turn around. Toggling one Group skips its entire subtree.
   {
+    // lighting follows the camera, one preset per room
+    const cz0 = camera.position.z;
+    world.setLightingRoom(
+      cz0 < 0.6 ? 'ante' : cz0 < 7.2 ? 'office' : cz0 < 16.2 ? 'trading'
+      : cz0 < 23.2 ? 'study' : 'rooftop');
+    world.updateLighting(dt);
+
     const cz = camera.position.z;
     // Range follows the fog rather than a constant: nothing past fog.far is
     // visible by definition, so that IS the correct cull distance, and it

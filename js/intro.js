@@ -495,13 +495,10 @@ export function buildIntro(scene, M, glowSprite, emis) {
   // main.js hands us the antechamber lights to dim; we restore them as the
   // door forges rather than snapping back, so the recovery reads as the vault
   // lighting itself rather than someone flicking a switch.
-  let roomLights = [];
-  const roomBase = [];
-  function bindRoomLights(list) {
-    roomLights = list || [];
-    roomBase.length = 0;
-    for (const l of roomLights) roomBase.push(l.intensity);
-  }
+  // The room's lights are slots in a shared pool now, not objects we can hold,
+  // so the blackout drives the pool's master multiplier instead.
+  let dimmer = null;
+  function bindRoomLights(fn) { dimmer = typeof fn === 'function' ? fn : null; }
   const burstLight = new THREE.PointLight(0xffc257, 0, 7.0, 1.7);
   burstLight.position.set(PIG.x, PIG.y, PIG.z);
   G.add(burstLight);
@@ -574,9 +571,7 @@ export function buildIntro(scene, M, glowSprite, emis) {
       const cut = clamp01((p - BEAT.impact) / 0.006);              // near-instant
       const back = sstep(clamp01((p - BEAT.forge[0]) / (BEAT.dial[1] - BEAT.forge[0])));
       const dim = Math.max(0, 1 - cut) + cut * back;
-      for (let i = 0; i < roomLights.length; i++) {
-        roomLights[i].intensity = roomBase[i] * (0.06 + 0.94 * dim);
-      }
+      if (dimmer) dimmer(0.06 + 0.94 * dim);
       // the burst itself: bright at the hit, decaying across the fall
       const bl = clamp01((p - BEAT.impact) / (BEAT.fall[1] - BEAT.impact));
       burstLight.intensity = p >= BEAT.impact && p < BEAT.gather[1]
