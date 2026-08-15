@@ -163,16 +163,6 @@
   letter-spacing:.1em;color:#5e6b45;min-height:18px;}
 #note .nstatus.err{color:#a33a2a;}
 
-/* ── 5. FLANKING PHOTO (520 x 650) ──
-   A dark gallery frame, not a Polaroid: the cream mat and printed caption
-   clashed with the brushed-steel-and-gold vault, and the name is already in
-   the HUD. Photo fills the frame behind a thin gold hairline. */
-#flank-photo{width:520px;height:650px;background:#0a090c;padding:16px;
-  box-shadow:inset 0 0 0 1px rgba(201,162,39,.55),
-             inset 0 0 26px rgba(0,0,0,.85);}
-#flank-photo img{width:100%;height:100%;object-fit:cover;object-position:center 20%;
-  display:block;filter:contrast(1.05) saturate(1.02) brightness(.97);}
-
 /* ── 6. FLANKING SIGN (660 x 200) ── */
 #flank-sign{width:660px;height:200px;background:#0c0b0d;color:var(--gold2);
   display:flex;flex-direction:column;align-items:center;justify-content:center;

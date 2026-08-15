@@ -5,6 +5,7 @@ import { EffectComposer } from '../lib/EffectComposer.js';
 import { RenderPass } from '../lib/RenderPass.js';
 import { ShaderPass } from '../lib/ShaderPass.js';
 import { UnrealBloomPass } from '../lib/UnrealBloomPass.js';
+import { BokehPass } from '../lib/BokehPass.js';
 import * as C from './config.js';
 import { buildWorld } from './world.js';
 import { buildIntro } from './intro.js';
@@ -21,7 +22,18 @@ gsap.ticker.lagSmoothing(0);
 
 const lbar = document.getElementById('lbar');
 const lmsg = document.getElementById('lmsg');
-const step = (pct, msg) => { lbar.style.width = pct + '%'; if (msg) lmsg.textContent = msg; };
+const tumb = [...document.querySelectorAll('#tumblers i')];
+// The load has to happen anyway, so it may as well be the vault being opened:
+// each real setup milestone sets one more tumbler.
+let tumblersSet = 0;
+const step = (pct, msg) => {
+  lbar.style.width = pct + '%';
+  const want = Math.min(tumb.length, Math.round((pct / 100) * tumb.length));
+  while (tumblersSet < want) { tumb[tumblersSet].classList.add('set'); tumblersSet++; }
+  lmsg.textContent = msg
+    ? `${msg} — ${Math.min(6, want)} / 6`
+    : `Aligning tumblers ${Math.min(6, want)} / 6`;
+};
 
 const clamp01 = v => v < 0 ? 0 : v > 1 ? 1 : v;
 const sstep = t => { t = clamp01(t); return t * t * t * (t * (t * 6 - 15) + 10); };
@@ -65,7 +77,7 @@ scene.fog = new THREE.Fog(0x08080c, 3, 24);
 const camera = new THREE.PerspectiveCamera(C.FOV, innerWidth / innerHeight, 0.05, 420);
 camera.position.set(0, 1.42, -2.10);
 
-step(10, 'Environment');
+step(12, 'Casting the room');
 
 // ═══════════════════ image-based lighting ═══════════════════
 {
@@ -76,10 +88,10 @@ step(10, 'Environment');
   pmrem.dispose();
 }
 
-step(24, 'Building rooms');
+step(30, 'Milling the door');
 const world = buildWorld(scene);
 
-step(50, 'Forging the vault');
+step(52, 'Forging the vault');
 const intro = buildIntro(scene, world.M, world.glowSprite, world.emis);
 
 // ═══════════════════ post-processing ═══════════════════
@@ -126,6 +138,18 @@ const GrainVignetteShader = {
       gl_FragColor = c;
     }`
 };
+// ── depth of field ──────────────────────────────────────────────
+// Focus is driven each frame from the camera-to-look-target distance, so
+// whatever the camera is actually reading stays sharp and the room falls off
+// behind it. This only blurs the WebGL layer — the CSS3D panels live in a
+// separate DOM layer and stay perfectly crisp, which is exactly the look.
+// maxblur is kept low deliberately: this pass costs a depth render.
+let bokehPass = null;
+if (!NO_POST) {
+  bokehPass = new BokehPass(scene, camera, { focus: 3.0, aperture: 0.00058, maxblur: 0.0055 });
+  composer.addPass(bokehPass);
+}
+
 const grainPass = new ShaderPass(GrainVignetteShader);
 grainPass.renderToScreen = true;
 composer.addPass(grainPass);
@@ -134,8 +158,13 @@ composer.addPass(grainPass);
 const stops = {};
 function computeStops() {
   const aspect = innerWidth / innerHeight;
-  stops.intro = { pos: new THREE.Vector3().fromArray(C.FIXED_STOP.intro.pos), tgt: new THREE.Vector3().fromArray(C.FIXED_STOP.intro.tgt) };
-  stops.wide = { pos: new THREE.Vector3().fromArray(C.FIXED_STOP.wide.pos), tgt: new THREE.Vector3().fromArray(C.FIXED_STOP.wide.tgt) };
+  // every entry in FIXED_STOP, so adding a room-reveal stop needs no code here
+  for (const [k, v] of Object.entries(C.FIXED_STOP)) {
+    stops[k] = {
+      pos: new THREE.Vector3().fromArray(v.pos),
+      tgt: new THREE.Vector3().fromArray(v.tgt)
+    };
+  }
   for (const key of Object.keys(C.CARRIER)) {
     const c = C.CARRIER[key];
     const d = C.fitDistance(c, aspect);
@@ -147,7 +176,7 @@ function computeStops() {
 }
 computeStops();
 
-step(70, 'Typesetting');
+step(70, 'Setting the type');
 const panels = buildPanels(scene, cssScene, world.M, stops);
 panels.orient();
 
@@ -156,7 +185,7 @@ panels.orient();
 // synchronous stall — that is what made the intro stutter, since the smash
 // brings ~10 new materials on screen within a few hundred milliseconds.
 // Paying it once, behind the loader, buys a smooth intro.
-step(84, 'Compiling shaders');
+step(86, 'Cutting the keyway');
 renderer.compile(scene, camera);
 
 // ═══════════════════ path curves ═══════════════════
@@ -174,27 +203,6 @@ function buildCurves() {
   });
 }
 buildCurves();
-
-// ── Timeline pacing ──────────────────────────────────────────────
-// Different beats deserve different dwell time: a room you're reading
-// should crawl, a corridor you're passing through should not. SEGMENTS
-// carries that weighting (its `vh` numbers are now just relative weights,
-// no longer literal page height). PACE converts a p value into a speed
-// multiplier so travel is quick and rooms linger, while the INPUT rate
-// stays perfectly constant — which is the whole point of dropping scroll.
-const TOTAL_W = C.SEGMENTS.reduce((a, s) => a + s.vh, 0);
-function paceAt(p) {
-  let p0 = 0;
-  for (const s of C.SEGMENTS) {
-    if (p <= s.p) {
-      // p-units per weight-unit: wide segments (long dwell) advance slower
-      const span = (s.p - p0) || 1e-6;
-      return (span / (s.vh / TOTAL_W));
-    }
-    p0 = s.p;
-  }
-  return 1;
-}
 
 // ═══════════════════ mood ═══════════════════
 const fogCol = new THREE.Color(), cA = new THREE.Color(), cB = new THREE.Color();
@@ -255,38 +263,77 @@ function sampleCamera(p) {
   cPos.copy(last.pos); cTgt.copy(last.tgt);
 }
 
-// ═══════════════════ navigation — constant-rate transport ═══════════════════
-// The page does NOT scroll. Scroll position was the root of the erratic feel:
-// wheel/trackpad deltas vary wildly per device and per flick, so identical
-// gestures moved the camera different distances. Instead, ANY input (W/S,
-// arrows, wheel, nav buttons) resolves to a direction, and the timeline
-// advances at a FIXED rate per second in that direction. Same speed every
-// time, every device. The wheel is kept as an input but only contributes a
-// direction for a short window — its magnitude is deliberately discarded.
+// ═══════════════════ navigation — station to station ═══════════════════
+// Input never controls distance or speed. Any gesture (wheel, W/S, arrows,
+// touch, nav button) selects the NEXT or PREVIOUS station, and the camera
+// travels there at a fixed rate and comes to rest exactly on it.
+//
+// The previous model started a fixed-DURATION glide per gesture, which meant
+// a short scroll could strand the camera mid-corridor with nothing framed —
+// "it moves then just stops". Travelling to a station instead makes landing
+// on content the only possible outcome.
 let p = 0;
 let introDone = REDUCED_MOTION;
 let navLocked = true;
 
-const BASE_RATE = 0.020;        // timeline units/sec at pace 1.0
-// One scroll gesture — ANY speed, ANY length — starts a glide that keeps
-// moving at the constant BASE_RATE for this long. Magnitude of the wheel
-// delta is deliberately discarded; a hard flick and a gentle nudge produce
-// exactly the same motion. Further scrolling during a glide just extends it.
-const GLIDE_MS = 900;
+const RATE = 0.019;                    // timeline units per second in transit
+const HOP_MIN = 1.6, HOP_MAX = 6.5;    // seconds; clamps a single hop
 
+let stationIdx = 0;
+let travel = null;        // active hop tween
+let pending = 0;          // one queued direction, so fast input still responds
 const keys = new Set();
-let wheelDir = 0, wheelUntil = 0;
-let jumpTween = null;           // set while a nav-button jump is animating
+let wheelLatch = 0;       // swallows the tail of one physical scroll gesture
 
-function cancelJump() { if (jumpTween) { jumpTween.kill(); jumpTween = null; } }
+// The next station strictly ahead of / behind the current position. Using
+// "strictly past p" rather than "nearest" matters at the very start: the
+// camera rests at INTRO_END (door shut) which is just short of station 0,
+// and a forward input there must open the door, not skip over it.
+function nextStationIdx(dir) {
+  const S = C.STATIONS;
+  if (dir > 0) {
+    for (let i = 0; i < S.length; i++) if (S[i] > p + 1e-4) return i;
+    return S.length - 1;
+  }
+  for (let i = S.length - 1; i >= 0; i--) if (S[i] < p - 1e-4) return i;
+  return 0;
+}
 
-// W / ArrowUp travels FORWARD through the building (deeper into the rooms);
-// S / ArrowDown reverses. That matches "W is forward" from games, and reads
-// the same as scrolling down to advance.
+function goToStation(idx) {
+  const S = C.STATIONS;
+  idx = Math.max(0, Math.min(S.length - 1, idx));
+  stationIdx = idx;
+  const target = S[idx];
+  if (travel) { travel.kill(); travel = null; }
+  const dist = Math.abs(target - p);
+  if (dist < 1e-4) return;
+  const st = { v: p };
+  travel = gsap.to(st, {
+    v: target,
+    duration: Math.min(HOP_MAX, Math.max(HOP_MIN, dist / RATE)),
+    ease: 'power1.inOut',
+    onUpdate() { p = st.v; },
+    onComplete() {
+      travel = null;
+      if (pending) { const d = pending; pending = 0; goToStation(stationIdx + d); }
+      else if (keys.has('fwd')) goToStation(stationIdx + 1);
+      else if (keys.has('back')) goToStation(stationIdx - 1);
+    }
+  });
+}
+
+function advance(dir) {
+  if (navLocked) return;
+  wakeFromIdle();
+  if (travel) { pending = dir; return; }
+  goToStation(nextStationIdx(dir));
+}
+
+// W / ArrowUp travels forward through the building; S / ArrowDown reverses.
 addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
-  if (k === 'w' || k === 'arrowup') { keys.add('fwd'); cancelJump(); e.preventDefault(); }
-  else if (k === 's' || k === 'arrowdown') { keys.add('back'); cancelJump(); e.preventDefault(); }
+  if (k === 'w' || k === 'arrowup') { if (!keys.has('fwd')) { keys.add('fwd'); advance(1); } e.preventDefault(); }
+  else if (k === 's' || k === 'arrowdown') { if (!keys.has('back')) { keys.add('back'); advance(-1); } e.preventDefault(); }
 });
 addEventListener('keyup', (e) => {
   const k = e.key.toLowerCase();
@@ -297,33 +344,41 @@ addEventListener('blur', () => keys.clear());
 
 addEventListener('wheel', (e) => {
   if (navLocked) return;
-  wheelDir = e.deltaY > 0 ? 1 : -1;
-  wheelUntil = performance.now() + GLIDE_MS;
-  cancelJump();
   e.preventDefault();
+  const t = performance.now();
+  if (t < wheelLatch) return;      // one physical flick = one station
+  wheelLatch = t + 140;
+  advance(e.deltaY > 0 ? 1 : -1);
 }, { passive: false });
 
-// touch: drag up = forward, at the same constant rate
 let touchY = null;
 addEventListener('touchstart', (e) => { touchY = e.touches[0].clientY; }, { passive: true });
 addEventListener('touchmove', (e) => {
   if (navLocked || touchY === null) return;
   const dy = touchY - e.touches[0].clientY;
-  if (Math.abs(dy) > 2) {
-    wheelDir = dy > 0 ? 1 : -1;
-    wheelUntil = performance.now() + GLIDE_MS;
-    touchY = e.touches[0].clientY;
-    cancelJump();
-  }
+  if (Math.abs(dy) > 26) { advance(dy > 0 ? 1 : -1); touchY = e.touches[0].clientY; }
 }, { passive: true });
 addEventListener('touchend', () => { touchY = null; });
 
-function navDirection(now) {
-  let d = 0;
-  if (keys.has('fwd')) d += 1;
-  if (keys.has('back')) d -= 1;
-  if (now < wheelUntil) d += wheelDir;
-  return d > 0 ? 1 : d < 0 ? -1 : 0;
+// ── idle drift ────────────────────────────────────────────────────
+// After a few seconds untouched the camera breathes very slightly. Static 3D
+// reads as a screenshot; a little parallax reads as a place. Amplitude is in
+// metres and deliberately below the threshold of looking like drunk-cam.
+const IDLE_AFTER = 3.4;
+let idleFor = 0;
+const drift = new THREE.Vector3();
+function wakeFromIdle() { idleFor = 0; }
+addEventListener('mousemove', wakeFromIdle, { passive: true });
+
+function updateDrift(dt, now) {
+  idleFor += dt;
+  const amt = clamp01((idleFor - IDLE_AFTER) / 2.2) * (travel ? 0 : 1);
+  const t = now * 0.001;
+  drift.set(
+    Math.sin(t * 0.31) * 0.030 * amt,
+    Math.sin(t * 0.23 + 1.3) * 0.018 * amt,
+    Math.sin(t * 0.19 + 2.1) * 0.022 * amt
+  );
 }
 
 // LOCKED (?p=X) freezes the timeline for headless capture — no input,
@@ -410,26 +465,55 @@ if (LOCKED !== null) {
 }
 
 // ═══════════════════ header nav clicks ═══════════════════
-// Jumping is the one place a non-constant rate is right: distance varies,
-// so it tweens on a fixed duration rather than a fixed speed. Any manual
-// input cancels it (see cancelJump) so the user is never fighting a tween.
-const navState = { p: 0 };
+// Jump straight to a room's READING station (not its reveal), since someone
+// clicking "Positions" wants the board, not the doorway.
+const ROOM_STATION = { office: 2, trading: 4, study: 6, rooftop: 8 };
 navBtns.forEach(btn => {
   btn.addEventListener('click', () => {
     if (!introDone) return;
-    const room = btn.dataset.jump;
-    const target = C.TIMELINE.find(s => s.t === 'hold' && s.stop === room);
-    if (!target) return;
-    const midP = (target.p0 + target.p1) / 2;
-    cancelJump();
-    navState.p = p;
-    jumpTween = gsap.to(navState, {
-      p: midP, duration: 1.25, ease: 'power2.inOut',
-      onUpdate() { p = navState.p; },
-      onComplete() { jumpTween = null; }
-    });
+    const idx = ROOM_STATION[btn.dataset.jump];
+    if (idx === undefined) return;
+    pending = 0;
+    wakeFromIdle();
+    goToStation(idx);
   });
 });
+
+// ═══════════════════ live position data ═══════════════════
+// data/positions.json is regenerated nightly in CI from real market data
+// (see data/build_positions.py). The board falls back to whatever is baked
+// into the HTML if the fetch fails, so a network blip degrades to stale
+// numbers rather than an empty board.
+(async () => {
+  try {
+    const r = await fetch('data/positions.json', { cache: 'no-cache' });
+    if (!r.ok) throw new Error('status ' + r.status);
+    const d = await r.json();
+    const st = d.strategy, bm = d.benchmark;
+    const sign = v => (v >= 0 ? '+' : '') + v.toFixed(1) + '%';
+
+    const ret = document.getElementById('roboReturn');
+    if (ret) {
+      ret.textContent = sign(st.total_return);
+      ret.className = 'n ' + (st.total_return >= 0 ? 'up' : 'down');
+    }
+    const asOf = document.getElementById('boardAsOf');
+    if (asOf) asOf.textContent = 'Live · as of ' + d.window.end;
+
+    // Sharpe and drawdown are shown next to the return on purpose: this
+    // strategy currently beats SPY on total return but not risk-adjusted,
+    // and a board that hid that would be worth less than one that shows it.
+    const stats = document.getElementById('boardStats');
+    if (stats) stats.textContent =
+      `Sharpe ${st.sharpe.toFixed(2)} · Max DD ${st.max_drawdown.toFixed(1)}%`;
+
+    const bench = document.getElementById('boardBench');
+    if (bench) bench.innerHTML =
+      `${bm.symbol} <b>${sign(bm.total_return)}</b> · Sharpe ${bm.sharpe.toFixed(2)}`;
+  } catch (err) {
+    console.warn('positions.json unavailable; board shows baked-in values', err);
+  }
+})();
 
 // ═══════════════════ message pad ═══════════════════
 // Posts to the same Formspree endpoint the existing site already uses, with
@@ -473,9 +557,19 @@ navBtns.forEach(btn => {
 
 // ═══════════════════ sound toggle ═══════════════════
 const soundBtn = document.getElementById('soundToggle');
-let muted = true;
+let muted = false;
+let audioArmed = false;
+function armAudio() {
+  if (audioArmed) return;
+  audioArmed = true;
+  if (!muted) AUDIO.setMuted(false);
+}
+for (const ev of ['pointerdown', 'keydown', 'wheel', 'touchstart']) {
+  addEventListener(ev, armAudio, { once: true, passive: true });
+}
 soundBtn.addEventListener('click', () => {
   muted = !muted;
+  audioArmed = true;
   AUDIO.setMuted(muted);
   soundBtn.textContent = muted ? 'SOUND OFF' : 'SOUND ON';
   soundBtn.classList.toggle('muted', muted);
@@ -512,21 +606,13 @@ let prev = performance.now(), firstFrame = true, firstFrameAt = 0, loaderDone = 
 function frame(now) {
   const dt = Math.min(0.05, (now - prev) / 1000); prev = now;
 
-  if (LOCKED !== null) {
-    p = LOCKED;
-  } else if (introDone && !jumpTween) {
-    // Constant rate: direction comes from input, magnitude never does.
-    // paceAt() only reweights how long each authored beat lasts.
-    const dir = navDirection(now);
-    if (dir !== 0) {
-      p = Math.min(1, Math.max(C.INTRO_END, p + dir * BASE_RATE * paceAt(p) * dt));
-    }
-  }
-  // while !introDone the GSAP autoplay timeline owns `p`; while jumpTween
-  // is live the nav tween owns it. Both write `p` directly.
+  if (LOCKED !== null) p = LOCKED;
+  // otherwise `p` is owned by whichever tween is live: the autoplay intro
+  // before handoff, or the station hop afterwards. Both write it directly.
 
+  updateDrift(dt, now);
   sampleCamera(p);
-  cPos.add(intro.shake);
+  cPos.add(intro.shake).add(drift);
   camera.position.copy(cPos);
   camera.lookAt(cTgt);
 
@@ -536,6 +622,9 @@ function frame(now) {
   applyMood(camera.position.z);
   updateHud(p);
 
+  if (bokehPass) {
+    bokehPass.uniforms.focus.value = Math.max(0.35, cPos.distanceTo(cTgt));
+  }
   grainPass.uniforms.uTime.value = now * 0.001;
   grainPass.uniforms.uAmt.value = REDUCED_MOTION ? 0.4 : 1.0;
 
@@ -556,7 +645,7 @@ function frame(now) {
   if (DEBUG) {
     const r = renderer.info.render;
     DEBUG.textContent =
-      `p ${p.toFixed(4)}  introDone ${introDone}  dir ${navDirection(performance.now())}\n` +
+      `p ${p.toFixed(4)}  introDone ${introDone}  station ${stationIdx}  travel ${!!travel}\n` +
       `cam  [${cPos.toArray().map(v => v.toFixed(3)).join(', ')}]\n` +
       `look [${cTgt.toArray().map(v => v.toFixed(3)).join(', ')}]\n` +
       `draws ${passDraws + r.calls}  tris ${passTris + r.triangles}  progs ${renderer.info.programs.length}\n` +
@@ -580,7 +669,7 @@ function frame(now) {
   if (firstFrame) {
     firstFrame = false;
     firstFrameAt = now;
-    step(100, 'Ready');
+    step(100, 'Unlocked');
   } else if (firstFrameAt && !loaderDone) {
     const age = now - firstFrameAt;
     const ld = document.getElementById('loader');
@@ -595,12 +684,13 @@ function frame(now) {
   }
   requestAnimationFrame(frame);
 }
-step(92, 'Lighting');
+step(96, 'Throwing the bolts');
 requestAnimationFrame(frame);
 
 // dev hook: jump to a timeline position from the console (post-handoff only)
 window.__goto = (target) => {
-  introDone = true; navLocked = false; cancelJump();
+  introDone = true; navLocked = false;
+  if (travel) { travel.kill(); travel = null; }
   p = clamp01(target);
 };
 window.__three = { scene, camera, renderer, stops, world, panels };

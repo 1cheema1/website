@@ -68,13 +68,8 @@ export const STOP_OF = { office: 'sheet', trading: 'board', study: 'spread', roo
 // spans roughly y -0.40 .. 3.24 at the door plane, and the door top is 2.60 —
 // so the sign lives in the 2.60..3.24 band.
 export const FLANK = {
-  // tucked into the gap between the door's rebate ring (outer edge 1.375)
-  // and the first facade pilaster (inner edge 2.09) — at x=2.80 it sat on
-  // the frame edge and read as an afterthought rather than as hung on a wall
-  photo: { el: [520, 650], w: 1.00, pos: [1.93, 1.50, -0.06] },
-  sign:  { el: [660, 200], w: 0.92, pos: [0, 2.92, -0.06] }
+  sign: { el: [660, 200], w: 0.92, pos: [0, 2.92, -0.06] }
 };
-FLANK.photo.h = FLANK.photo.w * FLANK.photo.el[1] / FLANK.photo.el[0];
 FLANK.sign.h = FLANK.sign.w * FLANK.sign.el[1] / FLANK.sign.el[0];
 // 4-point crossfade in p-space: [inStart, inEnd, outStart, outEnd].
 // Now that the swing (0.248→0.300) is visitor-driven, these appear as the
@@ -91,11 +86,11 @@ export const FLANK_WINDOW = [0.195, 0.232, 0.322, 0.352];
 // closes before the next opens, leaving a dead band around each corridor's
 // midpoint where no panel shows. validate.mjs enforces this.
 export const PANEL_WINDOW = {
-  sheet:  [0.360, 0.545],
-  board:  [0.556, 0.690],
-  spread: [0.700, 0.835],
-  card:   [0.845, 0.938],
-  note:   [0.946, 1.010]
+  sheet:  [0.360, 0.520],
+  board:  [0.530, 0.690],
+  spread: [0.700, 0.860],
+  card:   [0.870, 0.972],
+  note:   [0.978, 1.010]
 };
 
 // Distance that frames a carrier inside the viewport, given aspect.
@@ -109,7 +104,12 @@ export function fitDistance(c, aspect) {
 // Fixed (non-carrier) stops
 export const FIXED_STOP = {
   intro: { pos: [0, 1.42, -2.10], tgt: [0, 1.38, 0.05] },
-  wide:  { pos: [0, 1.42, -4.40], tgt: [0, 1.40, 0.00] }
+  wide:  { pos: [0, 1.42, -4.40], tgt: [0, 1.40, 0.00] },
+  // one wide "you have arrived" framing per room, ahead of its reading stop
+  officeWide:  { pos: [0, 1.58, 2.20],  tgt: [0, 1.00, 4.30] },
+  tradingWide: { pos: [0, 1.90, 9.40],  tgt: [0, 1.55, 15.00] },
+  studyWide:   { pos: [0, 1.62, 17.50], tgt: [0, 1.10, 20.20] },
+  rooftopWide: { pos: [0, 1.62, 24.50], tgt: [0, 1.05, 27.30] }
 };
 
 // ── Timeline ───────────────────────────────────────────────────
@@ -118,21 +118,39 @@ export const TIMELINE = [
   { t: 'move', p0: 0.078, p1: 0.232, from: 'intro', to: 'wide',
     via: [[0, 1.56, -2.60]], vtgt: [[0, 1.38, 0]] },
   { t: 'hold', p0: 0.232, p1: 0.300, stop: 'wide' },
-  { t: 'move', p0: 0.300, p1: 0.432, from: 'wide', to: 'office',
-    via: [[0, 1.44, -1.20], [0, 1.40, 1.95]],
-    vtgt: [[0, 1.40, 0.90], [0, 1.12, 3.60]] },
-  { t: 'hold', p0: 0.432, p1: 0.522, stop: 'office' },
-  { t: 'move', p0: 0.522, p1: 0.578, from: 'office', to: 'trading',
-    via: [[0, 1.60, 7.20]], vtgt: [[0, 1.74, 10.9]] },
-  { t: 'hold', p0: 0.578, p1: 0.668, stop: 'trading' },
-  { t: 'move', p0: 0.668, p1: 0.722, from: 'trading', to: 'study',
-    via: [[0, 1.64, 16.20]], vtgt: [[0, 1.44, 18.7]] },
-  { t: 'hold', p0: 0.722, p1: 0.812, stop: 'study' },
-  { t: 'move', p0: 0.812, p1: 0.866, from: 'study', to: 'rooftop',
-    via: [[0, 1.38, 23.20]], vtgt: [[0, 1.14, 25.3]] },
-  { t: 'hold', p0: 0.866, p1: 0.932, stop: 'rooftop' },
-  { t: 'move', p0: 0.932, p1: 0.952, from: 'rooftop', to: 'note' },
-  { t: 'hold', p0: 0.952, p1: 1.001, stop: 'note' }
+
+  { t: 'move', p0: 0.300, p1: 0.390, from: 'wide', to: 'officeWide',
+    via: [[0, 1.44, -1.20]], vtgt: [[0, 1.40, 0.90]] },
+  { t: 'move', p0: 0.390, p1: 0.470, from: 'officeWide', to: 'office' },
+
+  { t: 'move', p0: 0.470, p1: 0.560, from: 'office', to: 'tradingWide',
+    via: [[0, 1.62, 7.20]], vtgt: [[0, 1.70, 10.9]] },
+  { t: 'move', p0: 0.560, p1: 0.640, from: 'tradingWide', to: 'trading' },
+
+  { t: 'move', p0: 0.640, p1: 0.730, from: 'trading', to: 'studyWide',
+    via: [[0, 1.66, 16.20]], vtgt: [[0, 1.44, 18.7]] },
+  { t: 'move', p0: 0.730, p1: 0.810, from: 'studyWide', to: 'study' },
+
+  { t: 'move', p0: 0.810, p1: 0.900, from: 'study', to: 'rooftopWide',
+    via: [[0, 1.40, 23.20]], vtgt: [[0, 1.14, 25.3]] },
+  { t: 'move', p0: 0.900, p1: 0.955, from: 'rooftopWide', to: 'rooftop' },
+  { t: 'move', p0: 0.955, p1: 1.000, from: 'rooftop', to: 'note' }
+];
+
+// Every p the camera is allowed to come to rest at, in order. Navigation
+// always travels to the NEXT/PREVIOUS entry here and stops exactly on it —
+// that is what stops a gesture stranding you mid-corridor.
+export const STATIONS = [
+  0.300,   // vault, door open
+  0.390,   // office — room reveal
+  0.470,   // office — tear sheet
+  0.560,   // trading — room reveal
+  0.640,   // trading — board
+  0.730,   // study — room reveal
+  0.810,   // study — book
+  0.900,   // rooftop — room reveal
+  0.955,   // rooftop — contact card
+  1.000    // rooftop — message pad
 ];
 
 // Scroll blocks. Holds own a snap point; moves are short.

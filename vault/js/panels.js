@@ -161,15 +161,7 @@ export function buildPanels(scene, cssScene, M, stops) {
     scene.add(g); backs.push({ g, key: 'note' });
   }
 
-  // brass frame behind the photo, small stand-off block behind the sign
-  {
-    const c = FLANK.photo;
-    // deep enough to read as a real picture frame from the wide shot
-    const frame = new THREE.Mesh(new THREE.BoxGeometry(c.w + 0.075, c.h + 0.075, 0.035), M.brass);
-    frame.position.set(c.pos[0], c.pos[1], c.pos[2] - 0.019);
-    frame.castShadow = true; frame.receiveShadow = true;
-    scene.add(frame); backs.push({ g: frame, key: 'photo' });
-  }
+  // stand-off block behind the sign
   {
     const c = FLANK.sign;
     const back = new THREE.Mesh(new THREE.BoxGeometry(c.w + 0.03, c.h + 0.03, 0.016), M.darkSteel);

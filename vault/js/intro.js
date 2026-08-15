@@ -236,16 +236,23 @@ export function buildIntro(scene, M, glowSprite, emis) {
   // ══════════ 4 · HAMMER ══════════
   const hammer = new THREE.Group(); G.add(hammer);
   {
-    const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.019, 0.026, 0.62, 16), M.ash);
-    handle.position.set(0, -0.31, 0); hammer.add(handle);
-    const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.026, 0.20, 16), M.rubber);
-    grip.position.set(0, -0.52, 0); hammer.add(grip);
-    const head = new THREE.Mesh(new THREE.BoxGeometry(0.235, 0.085, 0.085), M.steel);
-    head.position.set(0.012, 0.02, 0); hammer.add(head);
-    const face = new THREE.Mesh(new THREE.CylinderGeometry(0.052, 0.050, 0.055, 20), M.steel);
-    face.position.set(-0.126, 0.02, 0); face.rotation.z = Math.PI / 2; hammer.add(face);
-    const claw = new THREE.Mesh(new THREE.TorusGeometry(0.062, 0.020, 8, 14, Math.PI * 0.8), M.steel);
-    claw.position.set(0.135, 0.03, 0); claw.rotation.set(Math.PI / 2, 0, -0.5); hammer.add(claw);
+    // A gavel, not a claw hammer: this is the first object on screen and a
+    // generic hardware-store hammer said nothing about the subject. Walnut
+    // shaft, banded barrel head, brass collar and strike rings.
+    const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.017, 0.022, 0.58, 16), M.walnut);
+    handle.position.set(0, -0.30, 0); hammer.add(handle);
+    const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.026, 0.030, 16), M.brass);
+    collar.position.set(0, -0.045, 0); hammer.add(collar);
+    const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.023, 0.17, 16), M.leatherOx);
+    grip.position.set(0, -0.50, 0); hammer.add(grip);
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.024, 14, 10), M.brass);
+    cap.position.set(0, -0.585, 0); hammer.add(cap);
+    const head = new THREE.Mesh(new THREE.CylinderGeometry(0.062, 0.062, 0.235, 24), M.walnut);
+    head.position.set(0, 0.02, 0); head.rotation.z = Math.PI / 2; hammer.add(head);
+    for (const sx of [-1, 1]) {
+      const band = new THREE.Mesh(new THREE.CylinderGeometry(0.0645, 0.0645, 0.028, 24), M.brass);
+      band.position.set(sx * 0.098, 0.02, 0); band.rotation.z = Math.PI / 2; hammer.add(band);
+    }
     hammer.traverse(o => { if (o.isMesh) { o.castShadow = false; } });
   }
 

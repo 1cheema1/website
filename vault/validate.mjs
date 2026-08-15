@@ -34,10 +34,8 @@ function crPoint(pts, t, tension = 0.5) {
 
 // ── derive stops exactly the way main.js does ──
 function stopsFor(aspect) {
-  const s = {
-    intro: { pos: C.FIXED_STOP.intro.pos, tgt: C.FIXED_STOP.intro.tgt },
-    wide: { pos: C.FIXED_STOP.wide.pos, tgt: C.FIXED_STOP.wide.tgt }
-  };
+  const s = {};
+  for (const [k, v] of Object.entries(C.FIXED_STOP)) s[k] = { pos: v.pos, tgt: v.tgt };
   for (const key of Object.keys(C.CARRIER)) {
     const c = C.CARRIER[key];
     const d = C.fitDistance(c, aspect);
@@ -87,7 +85,7 @@ for (const [a, label] of ASPECTS) {
 console.log('\n── 2. camera stops are inside a room ──');
 for (const [a, label] of ASPECTS) {
   const S = stopsFor(a);
-  for (const name of ['intro', 'wide', 'office', 'trading', 'study', 'rooftop']) {
+  for (const name of [...Object.keys(C.FIXED_STOP), 'office', 'trading', 'study', 'rooftop', 'note']) {
     const where = inside(S[name].pos);
     if (!where) bad(`${label} stop "${name}" at [${S[name].pos.map(v => v.toFixed(2))}] is outside every room`);
     else if (a === 1.7778) ok(`${name.padEnd(8)} [${S[name].pos.map(v => v.toFixed(3)).join(', ')}]  in ${where}`);
@@ -110,26 +108,32 @@ console.log('\n── 3. flight paths stay inside the building ──');
   });
 }
 
-console.log('\n── 4. timeline / segment table agree ──');
+console.log('\n── 4. timeline / stations agree ──');
 {
   let last = 0;
-  for (const s of C.TIMELINE) {
-    if (Math.abs(s.p0 - last) > 1e-9) bad(`timeline gap: expected p0=${last}, got ${s.p0}`);
-    if (s.p1 <= s.p0) bad(`timeline segment not increasing at ${s.p0}`);
-    last = s.p1;
+  for (const seg of C.TIMELINE) {
+    if (Math.abs(seg.p0 - last) > 1e-9) bad(`timeline gap: expected p0=${last}, got ${seg.p0}`);
+    if (seg.p1 <= seg.p0) bad(`timeline segment not increasing at ${seg.p0}`);
+    last = seg.p1;
   }
   const tEnd = C.TIMELINE[C.TIMELINE.length - 1].p1;
   if (tEnd < 1) bad(`timeline ends at ${tEnd}, before p=1`); else ok(`timeline continuous 0 → ${tEnd}`);
 
-  const segP = C.SEGMENTS.map(s => s.p);
-  const holdEnds = C.TIMELINE.map(s => s.p1);
-  for (const p of segP) {
-    if (!holdEnds.some(h => Math.abs(h - p) < 1e-9) && Math.abs(p - 1) > 1e-9)
-      bad(`SEGMENTS p=${p} does not land on a TIMELINE boundary`);
+  // every station must be a place the camera actually comes to rest, i.e. it
+  // must sit exactly on a timeline segment boundary — otherwise a hop lands
+  // mid-transit and nothing is framed
+  const bounds = new Set([0, ...C.TIMELINE.map(t => t.p1)]);
+  for (const st of C.STATIONS) {
+    const hit = [...bounds].some(b => Math.abs(b - st) < 1e-9);
+    if (!hit) bad(`STATION ${st} is not on a TIMELINE boundary — a hop there stops mid-move`);
   }
-  ok(`${C.SEGMENTS.length} scroll blocks, ${C.SEGMENTS.reduce((a, s) => a + s.vh, 0)}vh total`);
-  const snaps = C.SEGMENTS.filter(s => s.snap).length;
-  ok(`${snaps} snap points`);
+  let inc = true;
+  for (let i = 1; i < C.STATIONS.length; i++) if (C.STATIONS[i] <= C.STATIONS[i - 1]) inc = false;
+  if (!inc) bad('STATIONS are not strictly increasing');
+  else ok(`${C.STATIONS.length} stations, all on timeline boundaries`);
+
+  if (C.STATIONS[0] <= C.INTRO_END) bad(`first station (${C.STATIONS[0]}) is not past INTRO_END (${C.INTRO_END}) — the first input would have nothing to travel to`);
+  else ok(`first station ${C.STATIONS[0]} sits past INTRO_END ${C.INTRO_END} (first input opens the door)`);
 }
 
 console.log('\n── 5. carriers rest on their surface ──');
@@ -189,6 +193,17 @@ console.log('\n── 6. intro beats are ordered ──');
   if (b.forge[0] < b.gather[0]) bad(`forge starts before coins begin gathering`);
   if (C.INTRO_PACING.some(ph => ph.key === 'swing')) bad(`INTRO_PACING still contains a 'swing' phase — that beat belongs to the visitor`);
   else ok(`INTRO_PACING contains no swing phase`);
+}
+
+console.log('\n── 9b. each panel is visible at its own station ──');
+{
+  const AT = { sheet: 2, board: 4, spread: 6, card: 8, note: 9 };
+  for (const [k, idx] of Object.entries(AT)) {
+    const st = C.STATIONS[idx], w = C.PANEL_WINDOW[k];
+    if (!w) { bad(`no PANEL_WINDOW for ${k}`); continue; }
+    if (st < w[0] || st > w[1]) bad(`${k} station ${st} is outside its window [${w[0]},${w[1]}] — the panel would be hidden where it is meant to be read`);
+    else ok(`${k} readable at station ${idx} (p=${st})`);
+  }
 }
 
 console.log('\n── 9. panel windows do not overlap ──');

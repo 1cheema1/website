@@ -95,6 +95,11 @@ body.has-cursor,body.has-cursor *{cursor:none !important;}
    as a ghost over the scene once it has faded */
 #loader.gone{opacity:0;pointer-events:none;visibility:hidden;}
 #loader .n{font-family:var(--serif);font-size:34px;letter-spacing:.02em;color:#f5f1e8;}
+#loader .tumblers{display:flex;gap:9px;}
+#loader .tumblers i{display:block;width:15px;height:15px;border-radius:50%;
+  border:1px solid rgba(201,162,39,.40);transition:background .25s ease,border-color .25s ease,box-shadow .25s ease;}
+#loader .tumblers i.set{background:var(--gold2);border-color:var(--gold2);
+  box-shadow:0 0 12px rgba(201,162,39,.7);}
 #loader .b{width:170px;height:1px;background:rgba(245,241,232,.16);overflow:hidden;}
 #loader .b i{display:block;height:100%;width:0;background:var(--gold2);transition:width .3s ease;}
 #loader .s{font-family:var(--mono);font-size:9px;letter-spacing:.3em;color:rgba(245,241,232,.4);text-transform:uppercase;}
@@ -130,8 +135,9 @@ body.has-cursor,body.has-cursor *{cursor:none !important;}
 </script>
 <div id="loader">
   <div class="n">Umer Cheema</div>
+  <div class="tumblers" id="tumblers"><i></i><i></i><i></i><i></i><i></i><i></i></div>
   <div class="b"><i id="lbar"></i></div>
-  <div class="s" id="lmsg">Loading</div>
+  <div class="s" id="lmsg">Aligning tumblers 0 / 6</div>
 </div>
 
 <div id="css3d"></div>
@@ -147,7 +153,7 @@ body.has-cursor,body.has-cursor *{cursor:none !important;}
     <button data-jump="rooftop">Contact</button>
   </nav>
   <div class="navtools">
-    <button id="soundToggle" class="muted" aria-label="Toggle sound">SOUND OFF</button>
+    <button id="soundToggle" aria-label="Toggle sound">SOUND ON</button>
   </div>
 </header>
 
@@ -225,7 +231,7 @@ body.has-cursor,body.has-cursor *{cursor:none !important;}
     <div class="scan"></div>
     <div class="bh">
       <h2>Active Positions</h2>
-      <div class="r">Section 02 / 04 &nbsp;·&nbsp; Marked to Market</div>
+      <div class="r">Section 02 / 04 &nbsp;·&nbsp; <span id="boardAsOf">Marked to Market</span></div>
     </div>
     <table>
       <colgroup><col class="c1"><col class="c2"><col class="c3"><col class="c4"></colgroup>
@@ -235,7 +241,7 @@ body.has-cursor,body.has-cursor *{cursor:none !important;}
           <td class="sym">$ROBOADVISOR.PY</td>
           <td class="desc">ML robo-advisory — LR + RF + GBM ensemble, GMM regime detection, Kelly sizing</td>
           <td class="stack">Python · scikit-learn · GMM</td>
-          <td class="n up">+23.0%</td>
+          <td class="n up" id="roboReturn">+23.0%</td>
         </tr>
         <tr class="pos-row">
           <td class="sym">$CFM101.PY</td>
@@ -269,7 +275,7 @@ body.has-cursor,body.has-cursor *{cursor:none !important;}
         </tr>
       </tbody>
     </table>
-    <div class="bf"><span>6 Positions Open</span><span>Benchmark S&amp;P 500 <b>+19.0%</b></span><span>github.com/1cheema1</span></div>
+    <div class="bf"><span id="boardStats">6 Positions Open</span><span id="boardBench">Benchmark S&amp;P 500 <b>+19.0%</b></span><span>github.com/1cheema1</span></div>
   </div>
 
   <!-- 3 · STUDY BOOK SPREAD -->
@@ -330,11 +336,6 @@ body.has-cursor,body.has-cursor *{cursor:none !important;}
       <button id="noteSend" type="button">Send</button>
     </div>
     <div class="nstatus" id="noteStatus"></div>
-  </div>
-
-  <!-- 5 · FLANKING PHOTO -->
-  <div id="flank-photo" class="p3d">
-    <img src="img/photo.jpg" alt="Umer Cheema">
   </div>
 
   <!-- 6 · FLANKING SIGN -->

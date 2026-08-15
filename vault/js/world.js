@@ -284,6 +284,29 @@ export function buildWorld(scene) {
       const gl = new THREE.PointLight(0x5a8fd0, 1.6, 1.6, 2); gl.position.set(0, 0.44, 0.14); G2.add(gl);
     }
 
+    // framed photo standing on the desk — real geometry rather than a CSS3D
+    // panel so the room's own lamp light actually falls across it
+    {
+      const F = new THREE.Group();
+      at(F, 0.40, deskTop, 4.05);
+      F.rotation.y = -0.34;                      // angled toward the reader
+      const tilt = -0.24;                        // leans back on its easel
+      const fw = 0.125, fh = 0.155;
+      const cy = fh / 2 + 0.004;
+      F.add(sc(at(B(fw, fh, 0.014, M.walnut), 0, cy, 0, tilt)));
+      F.add(sc(at(B(fw - 0.018, fh - 0.018, 0.005, M.black), 0, cy, -0.008, tilt)));
+      const photoTex = new THREE.TextureLoader().load('img/photo.jpg');
+      photoTex.colorSpace = THREE.SRGBColorSpace;
+      const face = new THREE.Mesh(new THREE.PlaneGeometry(fw - 0.024, fh - 0.024),
+        new THREE.MeshStandardMaterial({ map: photoTex, roughness: 0.44, metalness: 0, envMapIntensity: 0.6 }));
+      // rotated PI about Y so its front faces -z toward the reader, the same
+      // convention every other flat surface in this scene uses
+      at(face, 0, cy, -0.012, tilt, Math.PI, 0);
+      F.add(face);
+      F.add(sc(at(B(0.013, 0.090, 0.011, M.walnut), 0, fh * 0.30, 0.032, 0.52)));
+      office.add(F);
+    }
+
     // desk clutter — composed for the reading frame, not scattered
     const porcelain = new THREE.MeshStandardMaterial({ color: 0xe8e4da, roughness: 0.22, metalness: 0.02, envMapIntensity: 0.9 });
     office.add(sc(at(CY(0.037, 0.032, 0.078, porcelain, 20), 0.338, deskTop + 0.040, 4.040)));
@@ -360,7 +383,18 @@ export function buildWorld(scene) {
   {
     const R = ROOM.trading, cz = (R.z0 + R.z1) / 2, dz = R.z1 - R.z0;
 
-    const floor = rc(PL(R.hw * 2, dz, M.carpet)); at(floor, 0, 0, cz, -Math.PI / 2); trading.add(floor);
+    const floorMat = new THREE.MeshStandardMaterial({
+      color: 0x0d1015, roughness: 0.24, metalness: 0.42, envMapIntensity: 0.85
+    });
+    const floor = rc(PL(R.hw * 2, dz, floorMat)); at(floor, 0, 0, cz, -Math.PI / 2); trading.add(floor);
+    // faked reflections: stretched additive pools under the lit surfaces
+    for (const s2 of [-1, 1]) {
+      const g = glowSprite(0x4f86c8, 1.5, 0.20);
+      g.scale.set(0.85, 2.6, 1);
+      at(g, s2 * 1.72, 0.02, 15.1); trading.add(g);
+    }
+    const cg = glowSprite(0x6ea8e8, 2.0, 0.24); cg.scale.set(2.6, 2.2, 1);
+    at(cg, 0, 0.02, 15.15); trading.add(cg);
     const ceil = rc(PL(R.hw * 2, dz, M.plasterD)); at(ceil, 0, R.h, cz, Math.PI / 2); trading.add(ceil);
     for (const s of [-1, 1]) {
       const w = rc(PL(dz, R.h, M.plasterD)); at(w, s * R.hw, R.h / 2, cz, 0, -s * Math.PI / 2); trading.add(w);
