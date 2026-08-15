@@ -42,7 +42,11 @@ export function screenData(market) {
   const real = (market && Array.isArray(market.screens)) ? market.screens : [];
   const out = real.map(s => ({
     symbol: s.symbol,
-    pct: s.pct,
+    // daily change: a ticker crawl means "today" to everyone who has ever seen
+    // one, so a quarter's move shown in that format reads as fabricated even
+    // when it is real. pct_window still labels the sparkline underneath.
+    pct: typeof s.pct_day === 'number' ? s.pct_day : (s.pct ?? 0),
+    pctWindow: typeof s.pct_window === 'number' ? s.pct_window : (s.pct ?? 0),
     last: s.last,
     spark: s.spark,
     live: true
@@ -53,7 +57,9 @@ export function screenData(market) {
     const spark = fallbackSeries(sym);
     out.push({
       symbol: sym,
-      pct: (spark[spark.length - 1] - spark[0]) * 100,
+      // a plausible single-session move, not a window move
+      pct: (spark[spark.length - 1] - spark[spark.length - 2]) * 100,
+      pctWindow: (spark[spark.length - 1] - spark[0]) * 100,
       last: null,
       spark,
       live: false
@@ -101,7 +107,7 @@ function screenEl(d, cls) {
     `<span class="pct">${fmtPct(d.pct)}</span></div>` +
     `<div class="scr-c">${sparkSVG(d.spark, up)}</div>` +
     `<div class="scr-f"><span>${d.last != null ? d.last.toFixed(2) : '—'}</span>` +
-    `<span>${d.live ? '3M' : 'SIM'}</span></div>`;
+    `<span>${d.live ? fmtPct(d.pctWindow) + ' 3M' : 'SIM'}</span></div>`;
   return el;
 }
 

@@ -42,7 +42,12 @@ const paint = () => new Promise(r => requestAnimationFrame(() => setTimeout(r, 0
 
 const clamp01 = v => v < 0 ? 0 : v > 1 ? 1 : v;
 const sstep = t => { t = clamp01(t); return t * t * t * (t * (t * 6 - 15) + 10); };
-const REDUCED_MOTION = matchMedia('(prefers-reduced-motion: reduce)').matches;
+// Reactive, not a snapshot. Reading .matches once at load ignores the user
+// turning the OS setting on mid-visit — which is exactly when someone who has
+// started feeling motion sick would reach for it.
+const _rmq = matchMedia('(prefers-reduced-motion: reduce)');
+let REDUCED_MOTION = _rmq.matches;
+_rmq.addEventListener('change', (e) => { REDUCED_MOTION = e.matches; });
 
 // ?debug=1 prints live render state into the page so a headless
 // screenshot is enough to diagnose a blank frame.
@@ -69,6 +74,13 @@ renderer.toneMappingExposure = 1.0;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.shadowMap.autoUpdate = false;
+// A WebGL canvas announces nothing to a screen reader; the label is the only
+// description available. The panels themselves are real DOM and read normally.
+renderer.domElement.setAttribute('role', 'img');
+renderer.domElement.setAttribute('aria-label',
+  'A vault interior rendered in 3D. Scroll or use the top navigation to travel ' +
+  'between four rooms: Experience, Projects, The Book, and Contact. All text ' +
+  'content is available as real text on the panels within each room.');
 document.getElementById('gl').appendChild(renderer.domElement);
 
 const cssRenderer = new CSS3DRenderer();
@@ -213,7 +225,7 @@ composer.addPass(grainPass);
 // ═══════════════════ camera stops ═══════════════════
 const stops = {};
 function computeStops() {
-  const aspect = innerWidth / innerHeight;
+  const aspect = (() => { const v = viewportSize(); return v.w / v.h; })();
   // every entry in FIXED_STOP, so adding a room-reveal stop needs no code here
   for (const [k, v] of Object.entries(C.FIXED_STOP)) {
     stops[k] = {
@@ -825,10 +837,11 @@ function applyQuality(tier) {
   qTier = tier;
   const want = Math.min(devicePixelRatio, q.dpr);
   if (Math.abs(renderer.getPixelRatio() - want) > 0.01) {
+    const { w, h } = viewportSize();
     renderer.setPixelRatio(want);
-    renderer.setSize(innerWidth, innerHeight);
-    composer.setSize(innerWidth, innerHeight);
-    if (bloomPass) bloomPass.setSize(innerWidth, innerHeight);
+    renderer.setSize(w, h);
+    composer.setSize(w, h);
+    if (bloomPass) bloomPass.setSize(w, h);
   }
   if (bloomPass) bloomPass.enabled = q.bloom;
   if (bokehPass) bokehPass.enabled = q.bokeh;
@@ -855,10 +868,11 @@ function setIntroCheap(on, wantBokeh) {
     introCheap = on;
     const want = on ? 1.0 : Math.min(devicePixelRatio, QUALITY[qTier].dpr);
     if (Math.abs(renderer.getPixelRatio() - want) > 0.01) {
+      const { w, h } = viewportSize();
       renderer.setPixelRatio(want);
-      renderer.setSize(innerWidth, innerHeight);
-      composer.setSize(innerWidth, innerHeight);
-      if (bloomPass) bloomPass.setSize(innerWidth, innerHeight);
+      renderer.setSize(w, h);
+      composer.setSize(w, h);
+      if (bloomPass) bloomPass.setSize(w, h);
     }
   }
   // enabled is a plain flag — toggling it costs nothing, no reallocation
@@ -937,7 +951,10 @@ function childAt(root, lx, ly) {
 function panelTargetAt(cx, cy) {
   const list = hittablePanels();
   if (!list.length) return null;
-  _ndc.set((cx / innerWidth) * 2 - 1, -(cy / innerHeight) * 2 + 1);
+  // NDC must come from the canvas box too, or every panel hit-test is offset
+  // by exactly the amount the canvas and the window disagree.
+  const { w: VW, h: VH } = viewportSize();
+  _ndc.set((cx / VW) * 2 - 1, -(cy / VH) * 2 + 1);
   _ray.setFromCamera(_ndc, camera);
   const hits = _ray.intersectObjects(list.map(i => i.hole), false);
   if (!hits.length || !hits[0].uv) return null;
@@ -1023,13 +1040,27 @@ function activate(el) {
 }
 
 
+// Size from the CANVAS CONTAINER, not the window. #gl is position:fixed inset:0
+// so the two usually agree — but they diverge whenever the visual viewport and
+// the layout viewport disagree, which is a real state on a restored tab, on
+// mobile while the URL bar collapses, and under headless capture. Every black
+// bottom band and desynced CSS3D panel in this project traced back to sizing
+// the renderer from innerHeight while the canvas was laid out to something else.
+function viewportSize() {
+  const el = renderer.domElement.parentElement;
+  const w = (el && el.clientWidth) || innerWidth;
+  const h = (el && el.clientHeight) || innerHeight;
+  return { w: Math.max(1, w), h: Math.max(1, h) };
+}
+
 function resize() {
-  camera.aspect = innerWidth / innerHeight;
+  const { w: VW, h: VH } = viewportSize();
+  camera.aspect = VW / VH;
   camera.updateProjectionMatrix();
-  renderer.setSize(innerWidth, innerHeight);
-  cssRenderer.setSize(innerWidth, innerHeight);
-  composer.setSize(innerWidth, innerHeight);
-  if (bloomPass) bloomPass.setSize(innerWidth, innerHeight);
+  renderer.setSize(VW, VH);
+  cssRenderer.setSize(VW, VH);
+  composer.setSize(VW, VH);
+  if (bloomPass) bloomPass.setSize(VW, VH);
   computeStops(); buildCurves(); panels.orient();
 }
 addEventListener('resize', resize);
@@ -1117,9 +1148,9 @@ function frame(now) {
   // framed for an aspect the viewer never had: everything uniformly too small,
   // with the canvas covering only part of the page. Comparing against the last
   // size each frame is two integer compares and self-heals whenever it changes.
-  if (innerWidth !== lastW || innerHeight !== lastH) {
-    lastW = innerWidth; lastH = innerHeight;
-    resize();
+  {
+    const { w: VW, h: VH } = viewportSize();
+    if (VW !== lastW || VH !== lastH) { lastW = VW; lastH = VH; resize(); }
   }
 
   if (LOCKED !== null) p = LOCKED;

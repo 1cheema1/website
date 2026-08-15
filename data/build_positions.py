@@ -185,11 +185,18 @@ def main() -> int:
         pts_s = s.iloc[::step_n]
         lo, hi = float(pts_s.min()), float(pts_s.max())
         rng = (hi - lo) or 1.0
+        # Headline number is the DAILY change — last close against the one
+        # before it. A ticker crawl means "today" everywhere else in the world,
+        # and showing a quarter's move in that format reads as fake even when
+        # the number is real: nothing gains 100% in a session.
+        prev = float(s.iloc[-2]) if len(s) >= 2 else float(s.iloc[-1])
+        last = float(s.iloc[-1])
         screens.append({
             "symbol": sym,
-            # percent change across the window the sparkline actually shows
-            "pct": round((float(s.iloc[-1]) / float(s.iloc[0]) - 1.0) * 100, 2),
-            "last": round(float(s.iloc[-1]), 2),
+            "pct_day": round((last / prev - 1.0) * 100, 2) if prev else 0.0,
+            # kept for the sparkline caption: the trend the chart actually draws
+            "pct_window": round((last / float(s.iloc[0]) - 1.0) * 100, 2),
+            "last": round(last, 2),
             # normalised 0..1 so the client can plot without knowing the scale
             "spark": [round((float(v) - lo) / rng, 4) for v in pts_s],
         })
