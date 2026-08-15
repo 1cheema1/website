@@ -27,20 +27,22 @@ let bedBus = null;
 let muted = true;
 let started = false;
 
-// D minor. Every pitched voice in the site is drawn from this so the room
-// tones, the pad and the coin chimes agree instead of being four unrelated
-// pitches. (D, F, A, C, E, G)
-const KEY = { D: 146.83, F: 174.61, A: 220.00, C: 261.63, E: 329.63, G: 196.00 };
+// D major pentatonic. This was D minor, which — with a sub drone under it and
+// a long dark tail over it — is horror vocabulary, not vault vocabulary. A
+// pentatonic set has no minor thirds and no tritone, so nothing in the room
+// tones, the pad or the coin chimes can land on an interval that reads as
+// dread. Everything pitched on the site comes from here.
+const KEY = { D: 146.83, E: 164.81, Fs: 185.00, A: 220.00, B: 246.94 };
 
 const now = () => ctx.currentTime;
 const rnd = (a, b) => a + Math.random() * (b - a);
 
 // ── impulse response ────────────────────────────────────────────
-// A vault is stone: long, dark, and with a touch of pre-delay so the tail
-// reads as distance rather than as a wash smeared over the transient. Built
-// as decaying noise with the high end rolled off as it decays, which is the
-// cheapest thing that still sounds like a real space.
-function buildIR(seconds = 2.6, decay = 2.9) {
+// Stone, but a room people work in — not a crypt. The first version ran 2.6s
+// with the highs closing hard as it decayed, and that tail was doing as much
+// of the eeriness as the drones were: everything arrived trailing a long dark
+// smear. Shorter and brighter reads as a large room rather than a tomb.
+function buildIR(seconds = 1.7, decay = 2.4) {
   const n = Math.floor(ctx.sampleRate * seconds);
   const buf = ctx.createBuffer(2, n, ctx.sampleRate);
   const preDelay = Math.floor(ctx.sampleRate * 0.012);
@@ -53,7 +55,7 @@ function buildIR(seconds = 2.6, decay = 2.9) {
       const env = Math.pow(1 - t, decay);
       // one-pole lowpass that closes as the tail decays
       const target = (Math.random() * 2 - 1) * env;
-      lp += (target - lp) * (0.30 - 0.22 * t);
+      lp += (target - lp) * (0.55 - 0.20 * t);   // stays open as it decays
       d[i] = lp;
     }
   }
@@ -185,65 +187,84 @@ function lfo(rate, depth, target, base) {
 }
 
 function startBeds() {
-  // antechamber — a sub drone and nothing else. It should feel like a held
-  // breath before the smash.
+  // The rule for all four: warm, moving, and never a sustained low drone. A
+  // held sub is the single most "abandoned building" sound there is; movement
+  // and a bit of rhythm are what make a room feel occupied instead of haunted.
+
+  // antechamber — a warm pad an octave up from where the drone used to sit,
+  // breathing slightly. Anticipation, not dread.
   beds.ante = makeBed((out) => {
-    for (const [f, amp, det] of [[KEY.D / 2, 0.16, 0], [KEY.D / 2, 0.10, 0.6], [KEY.A / 2, 0.05, -0.4]]) {
-      const o = ctx.createOscillator(); o.type = 'sine';
-      o.frequency.value = f; o.detune.value = det * 10;
+    for (const [f, amp] of [[KEY.D, 0.075], [KEY.A, 0.050], [KEY.Fs, 0.038]]) {
+      const o = ctx.createOscillator(); o.type = 'triangle';
+      o.frequency.value = f;
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900;
       const g = ctx.createGain(); g.gain.value = amp;
-      o.connect(g).connect(out); o.start();
+      // gentle amplitude drift per voice, at different rates so they never
+      // beat against each other in a way that sounds like an alarm
+      lfo(0.05 + Math.random() * 0.05, amp * 0.35, g.gain, amp);
+      o.connect(lp).connect(g).connect(out); o.start();
     }
-    const rum = ctx.createBufferSource();
-    rum.buffer = noiseBuffer(4); rum.loop = true;
-    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 90;
-    const rg = ctx.createGain(); rg.gain.value = 0.10;
-    rum.connect(lp).connect(rg).connect(out); rum.start();
+    // a soft shimmer on top instead of a rumble underneath
+    const sh = ctx.createOscillator(); sh.type = 'sine'; sh.frequency.value = KEY.A * 4;
+    const sg = ctx.createGain(); sg.gain.value = 0.006;
+    lfo(0.11, 0.005, sg.gain, 0.008);
+    sh.connect(sg).connect(out); sh.start();
   });
 
-  // trading floor — HVAC, and the hash of a busy room heard through glass
+  // trading floor — a busy room. Keyboards and ticker blips at a human rate do
+  // the work; the previous version used wandering bandpassed noise, which is
+  // indistinguishable from whispering.
   beds.trading = makeBed((out) => {
     const air = ctx.createBufferSource(); air.buffer = noiseBuffer(4); air.loop = true;
-    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 340; bp.Q.value = 0.55;
-    const ag = ctx.createGain(); ag.gain.value = 0.075;
+    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 420; bp.Q.value = 0.45;
+    const ag = ctx.createGain(); ag.gain.value = 0.045;
     air.connect(bp).connect(ag).connect(out); air.start();
 
-    const hum = ctx.createOscillator(); hum.type = 'sawtooth'; hum.frequency.value = 60;
-    const hlp = ctx.createBiquadFilter(); hlp.type = 'lowpass'; hlp.frequency.value = 150;
-    const hg = ctx.createGain(); hg.gain.value = 0.035;
-    hum.connect(hlp).connect(hg).connect(out); hum.start();
+    // warm room tone rather than a 60Hz hum, which reads as machinery
+    const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.value = KEY.D / 2;
+    const olp = ctx.createBiquadFilter(); olp.type = 'lowpass'; olp.frequency.value = 260;
+    const og = ctx.createGain(); og.gain.value = 0.030;
+    o.connect(olp).connect(og).connect(out); o.start();
 
-    // chatter: a bandpassed noise whose gain wanders, so it reads as a room
-    // with people in it rather than as hiss
-    const ch = ctx.createBufferSource(); ch.buffer = noiseBuffer(4); ch.loop = true;
-    const cbp = ctx.createBiquadFilter(); cbp.type = 'bandpass'; cbp.frequency.value = 1500; cbp.Q.value = 1.4;
-    const cg = ctx.createGain(); cg.gain.value = 0.02;
-    lfo(0.27, 0.016, cg.gain, 0.024);
-    ch.connect(cbp).connect(cg).connect(out); ch.start();
+    beds._floor = out;    // keystrokes + blips are scheduled from tickFloor()
   });
 
-  // study — near silence, one soft filtered layer and a clock
+  // study — a warm quiet room. No clock: a lone tick in near-silence is the
+  // most tense sound available, and this is meant to be a place you'd sit.
   beds.study = makeBed((out) => {
     const air = ctx.createBufferSource(); air.buffer = noiseBuffer(4); air.loop = true;
-    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 420;
-    const g = ctx.createGain(); g.gain.value = 0.035;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 520;
+    const g = ctx.createGain(); g.gain.value = 0.030;
     air.connect(lp).connect(g).connect(out); air.start();
-    beds._clock = out;   // the tick is scheduled from tickClock()
+
+    const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = KEY.Fs;
+    const og = ctx.createGain(); og.gain.value = 0.016;
+    lfo(0.06, 0.008, og.gain, 0.018);
+    o.connect(og).connect(out); o.start();
+    beds._study = out;    // occasional page rustle
   });
 
-  // rooftop — wind, and a city a long way down
+  // rooftop — a warm evening. The wind was swept hard by an LFO, which howls;
+  // it is now a soft steady breeze with a city humming a long way below.
   beds.rooftop = makeBed((out) => {
     const w = ctx.createBufferSource(); w.buffer = noiseBuffer(4); w.loop = true;
-    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 620; bp.Q.value = 0.42;
-    const g = ctx.createGain(); g.gain.value = 0.055;
-    lfo(0.09, 0.030, g.gain, 0.060);
-    lfo(0.13, 220, bp.frequency, 640);
+    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 500; bp.Q.value = 0.30;
+    const g = ctx.createGain(); g.gain.value = 0.038;
+    lfo(0.07, 0.012, g.gain, 0.040);
     w.connect(bp).connect(g).connect(out); w.start();
 
     const city = ctx.createBufferSource(); city.buffer = noiseBuffer(4); city.loop = true;
-    const clp = ctx.createBiquadFilter(); clp.type = 'lowpass'; clp.frequency.value = 200;
-    const cg = ctx.createGain(); cg.gain.value = 0.030;
+    const clp = ctx.createBiquadFilter(); clp.type = 'lowpass'; clp.frequency.value = 320;
+    const cg = ctx.createGain(); cg.gain.value = 0.032;
     city.connect(clp).connect(cg).connect(out); city.start();
+
+    // a warm chord high above the city, so the roof feels like arrival
+    for (const [f, amp] of [[KEY.B, 0.020], [KEY.Fs * 2, 0.012]]) {
+      const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.value = f;
+      const og = ctx.createGain(); og.gain.value = amp;
+      lfo(0.045 + Math.random() * 0.04, amp * 0.45, og.gain, amp);
+      o.connect(og).connect(out); o.start();
+    }
   });
 }
 
@@ -256,14 +277,14 @@ function startPad() {
   const send = ctx.createGain(); send.gain.value = 0.55;
   out.connect(bedBus);
   out.connect(send).connect(convolver);
-  for (const f of [KEY.D, KEY.F, KEY.A, KEY.C]) {
+  for (const f of [KEY.D, KEY.Fs, KEY.A, KEY.B]) {
     const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.value = f;
     const g = ctx.createGain(); g.gain.value = 0;
     const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 700;
     o.connect(lp).connect(g).connect(out); o.start();
     padVoices.push(g);
   }
-  out.gain.setTargetAtTime(0.16, now(), 4.0);
+  out.gain.setTargetAtTime(0.13, now(), 4.0);
 }
 
 // Rooms add voices to the pad as you go, so the harmony fills out across the
@@ -307,20 +328,47 @@ export function updateBeds(z) {
   padVoices.forEach((g, i) => g.gain.setTargetAtTime(i < n ? 0.09 : 0, t, 2.4));
 }
 
-// study clock — one tick a second while you are in the room
-let clockTimer = null;
-export function setClock(on) {
-  if (!ctx || muted) { return; }
-  if (on && !clockTimer) {
-    clockTimer = setInterval(() => {
-      if (muted || !ctx) return;
-      const b = bus(0.25, rnd(-0.15, 0.15));
-      b.gain.value = 0.05;
-      noise(0.03, b, { type: 'bandpass', freq: 2600, q: 3.0, gain: 0.30, attack: 0.001, decay: 0.028 });
-    }, 1000);
-  } else if (!on && clockTimer) {
-    clearInterval(clockTimer); clockTimer = null;
-  }
+// Room life. This replaces the study clock: one tick per second in a quiet
+// room is a countdown, and it made the study feel tense rather than calm. The
+// trading floor gets keystrokes and ticker blips at a human rate, the study
+// gets an occasional page. Both are irregular on purpose — anything perfectly
+// periodic stops sounding like a person and starts sounding like a machine.
+let lifeTimer = null;
+let lifeRoom = null;
+
+function scheduleLife() {
+  if (lifeTimer) clearTimeout(lifeTimer);
+  const room = lifeRoom;
+  if (!room || muted || !ctx) return;
+  const wait = room === 'trading' ? rnd(90, 420) : rnd(4000, 11000);
+  lifeTimer = setTimeout(() => {
+    if (!muted && ctx && lifeRoom === room) {
+      if (room === 'trading') {
+        if (Math.random() < 0.82) {
+          // a keystroke: short, dry, low-mid
+          const b = bus(0.18, rnd(-0.7, 0.7)); b.gain.value = rnd(0.05, 0.12);
+          noise(0.022, b, { type: 'bandpass', freq: rnd(700, 1500), q: 2.2, gain: 0.30, attack: 0.001, decay: 0.02 });
+        } else {
+          // a soft ticker blip, on a chord tone so it never clashes
+          const f = [KEY.A * 2, KEY.D * 4, KEY.Fs * 2][(Math.random() * 3) | 0];
+          metalTick(0, f, 0.020, rnd(-0.5, 0.5));
+        }
+      } else {
+        const b = bus(0.30, rnd(-0.3, 0.3)); b.gain.value = 0.35;
+        noise(0.28, b, { type: 'highpass', freq: 1700, q: 0.6, gain: 0.10, attack: 0.05, decay: 0.26 });
+      }
+    }
+    scheduleLife();
+  }, wait);
+}
+
+export function setClock(on, room) {
+  if (!ctx) return;
+  const want = on ? (room || 'study') : null;
+  if (want === lifeRoom) return;
+  lifeRoom = want;
+  if (!want) { if (lifeTimer) { clearTimeout(lifeTimer); lifeTimer = null; } return; }
+  scheduleLife();
 }
 
 // ═══════════════════ 44 · the smash ═══════════════════
@@ -438,7 +486,7 @@ export function shardScatter(dur = 1.2, count = 26) {
 export function coinCascade(dur = 1.4, count = 18) {
   if (muted || !ctx) return;
   if (!Number.isFinite(dur) || dur <= 0) dur = 1.4;
-  const scale = [KEY.D * 4, KEY.F * 4, KEY.A * 4, KEY.C * 4, KEY.E * 4];
+  const scale = [KEY.D * 4, KEY.E * 4, KEY.Fs * 4, KEY.A * 4, KEY.B * 4];
   for (let i = 0; i < count; i++) {
     const delay = (i / count) * dur + rnd(0, 0.04);
     const f = scale[(Math.random() * scale.length) | 0] * (Math.random() < 0.3 ? 2 : 1);
@@ -549,7 +597,7 @@ export function doorSwing(dur = 2.2) {
 // ═══════════════════ arrival + UI ═══════════════════
 // 43 · arrivals are chord tones now, so each room is a note of the same key
 // instead of an unrelated pitch.
-const ROOM_TONE = { office: KEY.A, trading: KEY.D, study: KEY.F, rooftop: KEY.C };
+const ROOM_TONE = { office: KEY.A, trading: KEY.D, study: KEY.Fs, rooftop: KEY.B };
 let lastRoomTone = null;
 
 export function roomArrival(room) {

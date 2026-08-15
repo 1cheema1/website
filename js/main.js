@@ -768,9 +768,31 @@ soundBtn.addEventListener('click', () => {
 // ═══════════════════ custom cursor ═══════════════════
 const cursorEl = document.getElementById('cursor');
 let ptrX = -100, ptrY = -100, ptrMoved = false, hoverDirty = false;
+
+// ── why the custom cursor is adaptive ─────────────────────────────
+// A DOM cursor is painted by the main thread, so it can only move as fast as
+// the page renders. The antechamber is the heaviest moment on the site (six
+// lights, bloom, depth-of-field, 128 shard meshes), and at 15-20fps a ring
+// following the pointer reads as lag no matter how the update is scheduled —
+// removing the blend mode and moving the write into the frame loop both helped
+// and neither could fix it, because the ceiling is the frame rate itself.
+//
+// The OS cursor has no such problem: it is composited by the window server and
+// is never late. So when frames are slow we simply give the pointer back. The
+// ring returns once there is budget for it, and on a weak machine it may never
+// appear at all — which is the correct outcome.
+let frameEMA = 16.7;               // ms, exponential moving average
+let ringOn = false;
+const RING_ON_MS = 20, RING_OFF_MS = 26;   // hysteresis, so it can't flicker
+
+function setRing(on) {
+  if (on === ringOn) return;
+  ringOn = on;
+  document.body.classList.toggle('has-cursor', on);
+  cursorEl.style.display = on ? '' : 'none';
+}
 const FINE_POINTER = matchMedia('(pointer: fine)').matches;
 if (FINE_POINTER) {
-  document.body.classList.add('has-cursor');
   addEventListener('mousemove', (e) => {
     // Record only. The transform is written once per frame in frame(), so a
     // burst of coalesced moves during a long frame can never queue up writes,
@@ -953,7 +975,13 @@ function frame(now) {
   // otherwise `p` is owned by whichever tween is live: the autoplay intro
   // before handoff, or the station hop afterwards. Both write it directly.
 
-  if (ptrMoved) {
+  // frame-time EMA drives whether we own the pointer at all
+  frameEMA += ((dt * 1000) - frameEMA) * 0.06;
+  if (FINE_POINTER) {
+    if (ringOn && frameEMA > RING_OFF_MS) setRing(false);
+    else if (!ringOn && frameEMA < RING_ON_MS) setRing(true);
+  }
+  if (ringOn && ptrMoved) {
     ptrMoved = false;
     cursorEl.style.transform = `translate3d(${ptrX}px, ${ptrY}px, 0)`;
   }
@@ -980,7 +1008,12 @@ function frame(now) {
   panels.update(p, camera);
   applyMood(camera.position.z);
   AUDIO.updateBeds(camera.position.z);
-  AUDIO.setClock(camera.position.z > 17.0 && camera.position.z < 22.5);
+  // room life: keystrokes on the floor, an occasional page in the study
+  {
+    const z = camera.position.z;
+    const room = (z > 9.5 && z < 17.0) ? 'trading' : (z > 17.0 && z < 22.5) ? 'study' : null;
+    AUDIO.setClock(!!room, room);
+  }
   updateHud(p);
 
   if (bokehPass) {
