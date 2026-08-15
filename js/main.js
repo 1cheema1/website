@@ -181,7 +181,12 @@ const GrainVignetteShader = {
       // smear just looks like the renderer broke.
       vec4 c;
       if (uHit > 0.001) {
-        float amt = uHit * 0.020;
+        // 0.020 with +/-1.30 channel offsets split red and blue far enough to
+        // read as an RGB glitch rather than an impact — it looked like the
+        // renderer had failed, not like something had been hit. A third of the
+        // displacement still registers as a jolt at the edges without the
+        // channels visibly separating.
+        float amt = uHit * 0.0065;
         vec2 dir = d * amt;
         // radial blur: a few taps back toward centre
         vec4 acc = vec4(0.0);
@@ -191,11 +196,11 @@ const GrainVignetteShader = {
         }
         acc *= 0.2;
         // chromatic aberration: channels sampled at different offsets
-        c.r = texture2D(tDiffuse, vUv + dir * 1.30).r;
+        c.r = texture2D(tDiffuse, vUv + dir * 1.10).r;
         c.g = acc.g;
-        c.b = texture2D(tDiffuse, vUv - dir * 1.30).b;
+        c.b = texture2D(tDiffuse, vUv - dir * 1.10).b;
         c.a = 1.0;
-        c.rgb = mix(acc.rgb, c.rgb, 0.75);
+        c.rgb = mix(acc.rgb, c.rgb, 0.55);
       } else {
         c = texture2D(tDiffuse, vUv);
       }
@@ -833,7 +838,8 @@ const QUALITY = [
 ];
 // A phone should not have to spend two seconds at tier 0 discovering it cannot
 // afford depth of field. Coarse pointer is the best available proxy for it.
-let qTier = matchMedia('(pointer: coarse)').matches ? 2 : 0;
+const COARSE = matchMedia('(pointer: coarse)').matches;
+let qTier = COARSE ? 2 : 0;
 let qHoldUntil = 0;
 // Downward-biased on purpose. Stepping down is cheap insurance; stepping back
 // up reallocates every render target, so it is rare and requires real headroom.
@@ -936,7 +942,7 @@ const _ndc = new THREE.Vector2();
 // Coarse pointers get a much larger target. WCAG asks for 24x24 CSS px and the
 // native guidance for 44; a fingertip on a projected panel has neither the
 // precision nor the visual feedback a mouse does.
-const HIT_SLOP = matchMedia('(pointer: coarse)').matches ? 46 : 12;
+const HIT_SLOP = COARSE ? 46 : 12;
 const HIT_SEL = 'a[href],button,textarea,input,.pos-row';
 
 function hittablePanels() {
@@ -1281,10 +1287,10 @@ function frame(now) {
   grainPass.uniforms.uAmt.value = REDUCED_MOTION ? 0.4 : 1.0;
   // pulse rides the same p the shake does, so it lands exactly on contact
   {
-    const w = 0.030;
+    const w = 0.018;
     const k = (p >= C.BEAT.impact && p < C.BEAT.impact + w)
       ? Math.pow(1 - (p - C.BEAT.impact) / w, 2.0) : 0;
-    grainPass.uniforms.uHit.value = REDUCED_MOTION ? 0 : k;
+    grainPass.uniforms.uHit.value = (REDUCED_MOTION || COARSE) ? 0 : k;
   }
 
   if (firstFrame) { renderer.shadowMap.needsUpdate = true; }

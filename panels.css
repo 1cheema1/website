@@ -359,86 +359,85 @@
    come from the type, because the element is a fixed-size box that gets
    projected — a media query on the viewport still applies to it, but the
    result is scaled by however much of the screen the panel occupies. */
-@media (max-aspect-ratio: 1/1){
 
   /* 1 · tear sheet */
-  #sheet{width:760px;height:1180px;padding:44px 46px;}
-  #sheet .hdr{flex-direction:column;gap:20px;}
-  #sheet h1{font-size:64px;}
-  #sheet .sub{font-size:21px;}
-  #sheet .avail{font-size:19px;padding:9px 14px;}
-  #sheet .ph{width:110px;height:136px;}
-  #sheet .doc{text-align:left;font-size:17px;}
-  #sheet .doc b{font-size:26px;}
-  #sheet .body{grid-template-columns:1fr;gap:22px;margin-top:24px;padding-bottom:64px;}
-  #sheet .rt em{font-size:34px;}
-  #sheet .rt span,#sheet .rr{font-size:17px;}
-  #sheet li{font-size:27px;line-height:1.36;margin-bottom:9px;padding-left:22px;}
-  #sheet li:before{top:15px;width:11px;}
-  #sheet .foot{font-size:17px;left:46px;right:46px;bottom:20px;}
+body.portrait #sheet{padding:44px 46px;}
+body.portrait #sheet .hdr{flex-direction:column;gap:20px;}
+body.portrait #sheet h1{font-size:64px;}
+body.portrait #sheet .sub{font-size:21px;}
+body.portrait #sheet .avail{font-size:19px;padding:9px 14px;}
+body.portrait #sheet .ph{width:110px;height:136px;}
+body.portrait #sheet .doc{text-align:left;font-size:17px;}
+body.portrait #sheet .doc b{font-size:26px;}
+body.portrait #sheet .body{grid-template-columns:1fr;gap:22px;margin-top:24px;padding-bottom:64px;}
+body.portrait #sheet .rt em{font-size:34px;}
+body.portrait #sheet .rt span,body.portrait #sheet .rr{font-size:17px;}
+body.portrait #sheet li{font-size:27px;line-height:1.36;margin-bottom:9px;padding-left:22px;}
+body.portrait #sheet li:before{top:15px;width:11px;}
+body.portrait #sheet .foot{font-size:17px;left:46px;right:46px;bottom:20px;}
 
   /* 2 · projects board */
-  #board{width:820px;height:1160px;padding:44px 44px;}
-  #board h2{font-size:56px;}
-  #board .r{font-size:17px;}
+body.portrait #board{padding:44px 44px;}
+body.portrait #board h2{font-size:56px;}
+body.portrait #board .r{font-size:17px;}
   /* the table becomes stacked records: a 4-column grid cannot survive here */
-  #board thead{display:none;}
-  #board table,#board tbody,#board tr,#board td{display:block;width:100%;}
-  #board tr.pos-row{padding:20px 0;border-bottom:1px solid rgba(255,255,255,.08);}
-  #board td{padding:2px 0;border:none;}
-  #board td.sym{font-size:38px;}
-  #board td.desc{font-size:30px;line-height:1.38;margin-top:10px;}
-  #board td.stack{font-size:21px;margin-top:10px;}
-  #board td.n{text-align:left;font-size:28px;margin-top:12px;}
-  #board .bf{font-size:16px;flex-wrap:wrap;gap:8px 18px;}
+body.portrait #board thead{display:none;}
+body.portrait #board table,body.portrait #board tbody,body.portrait #board tr,body.portrait #board td{display:block;width:100%;}
+body.portrait #board tr.pos-row{padding:20px 0;border-bottom:1px solid rgba(255,255,255,.08);}
+body.portrait #board td{padding:2px 0;border:none;}
+body.portrait #board td.sym{font-size:38px;}
+body.portrait #board td.desc{font-size:30px;line-height:1.38;margin-top:10px;}
+body.portrait #board td.stack{font-size:21px;margin-top:10px;}
+body.portrait #board td.n{text-align:left;font-size:28px;margin-top:12px;}
+body.portrait #board .bf{font-size:16px;flex-wrap:wrap;gap:8px 18px;}
 
   /* 3 · the book — two facing pages become one column */
-  #spread{width:780px;height:1140px;flex-direction:column;}
-  #spread .gutter{display:none;}
-  #spread .pg{padding:40px 42px 20px;}
-  #spread .pg.r{padding-top:8px;}
-  #spread .pg.l,#spread .pg.r{box-shadow:none;}
-  #spread h3{font-size:19px;margin:22px 0 12px;}
-  #spread .hold em{font-size:34px;}
-  #spread .hold span{font-size:19px;}
-  #spread .alloc .tk{font-size:32px;width:150px;}
-  #spread .alloc .nm{font-size:17px;}
-  #spread .alloc .pf{font-size:23px;width:130px;}
-  #spread .disc{font-size:15px;}
-  #spread .prob em{font-size:31px;}
-  #spread .prob span{font-size:22px;line-height:1.4;}
-  #spread .pn{font-size:16px;}
+body.portrait #spread{flex-direction:column;}
+body.portrait #spread .gutter{display:none;}
+body.portrait #spread .pg{padding:40px 42px 20px;}
+body.portrait #spread .pg.r{padding-top:8px;}
+body.portrait #spread .pg.l,body.portrait #spread .pg.r{box-shadow:none;}
+body.portrait #spread h3{font-size:19px;margin:22px 0 12px;}
+body.portrait #spread .hold em{font-size:34px;}
+body.portrait #spread .hold span{font-size:19px;}
+body.portrait #spread .alloc .tk{font-size:32px;width:150px;}
+body.portrait #spread .alloc .nm{font-size:17px;}
+body.portrait #spread .alloc .pf{font-size:23px;width:130px;}
+body.portrait #spread .disc{font-size:15px;}
+body.portrait #spread .prob em{font-size:31px;}
+body.portrait #spread .prob span{font-size:22px;line-height:1.4;}
+body.portrait #spread .pn{font-size:16px;}
 
   /* 4 · contact card */
-  #card{width:800px;height:1120px;padding:52px 50px;}
-  #card h1{font-size:70px;}
-  #card .role{font-size:20px;}
-  #card .rows{grid-template-columns:1fr;gap:30px;margin-top:40px;}
-  #card .row .k{font-size:18px;}
-  #card .row .v{font-size:31px;}
-  #card .sig em{font-size:48px;}
-  #card .sig span,#card .stamp{font-size:17px;}
-  #card .stamp{left:50px;bottom:44px;padding:11px 17px;}
-  #card .sig{right:50px;bottom:42px;}
+body.portrait #card{padding:52px 50px;}
+body.portrait #card h1{font-size:70px;}
+body.portrait #card .role{font-size:20px;}
+body.portrait #card .rows{grid-template-columns:1fr;gap:30px;margin-top:40px;}
+body.portrait #card .row .k{font-size:18px;}
+body.portrait #card .row .v{font-size:31px;}
+body.portrait #card .sig em{font-size:48px;}
+body.portrait #card .sig span,body.portrait #card .stamp{font-size:17px;}
+body.portrait #card .stamp{left:50px;bottom:44px;padding:11px 17px;}
+body.portrait #card .sig{right:50px;bottom:42px;}
 
   /* 4b · message pad */
-  #note{width:760px;height:1060px;padding:40px 42px;}
-  #note .nhead{font-size:22px;}
-  #note textarea{font-size:26px;}
-  #note input{font-size:22px;}
-  #note button{font-size:20px;padding:16px 26px;}
-  #note .nstatus{font-size:17px;}
+body.portrait #note{padding:40px 42px;}
+body.portrait #note .nhead{font-size:22px;}
+body.portrait #note textarea{font-size:26px;}
+body.portrait #note input{font-size:22px;}
+body.portrait #note button{font-size:20px;padding:16px 26px;}
+body.portrait #note .nstatus{font-size:17px;}
 
   /* 4c · the résumé page keeps its own portrait shape; only the type grows */
-  #resume{padding:52px 56px 0;}
-  #resume h1{font-size:62px;}
-  #resume .rcontact{font-size:20px;}
-  #resume .rsec{font-size:19px;}
-  #resume .rrow > div:first-child{font-size:27px;}
-  #resume .rwhen{font-size:18px;}
-  #resume li{font-size:20px;line-height:1.42;}
-  #resume .rskill{font-size:19px;}
-  #resume .rskill span{min-width:150px;font-size:16px;}
-  #resume .rfoot a{font-size:22px;padding:22px 26px;}
-  #resume .rfoot button{font-size:17px;padding:22px 20px;}
-}
+body.portrait #resume{padding:52px 56px 0;}
+body.portrait #resume h1{font-size:62px;}
+body.portrait #resume .rcontact{font-size:20px;}
+body.portrait #resume .rsec{font-size:19px;}
+body.portrait #resume .rrow > div:first-child{font-size:27px;}
+body.portrait #resume .rwhen{font-size:18px;}
+body.portrait #resume li{font-size:20px;line-height:1.42;}
+body.portrait #resume .rskill{font-size:19px;}
+body.portrait #resume .rskill span{min-width:150px;font-size:16px;}
+body.portrait #resume .rfoot a{font-size:22px;padding:22px 26px;}
+body.portrait #resume .rfoot button{font-size:17px;padding:22px 20px;}
+

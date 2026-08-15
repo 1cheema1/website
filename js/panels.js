@@ -56,7 +56,16 @@ function holeMaterial() {
 export function buildPanels(scene, cssScene, M, stops, market) {
   // Portrait screens get portrait panels. Resolved once — the paper props below
   // are built from these dimensions, so it must not change under them.
+  // ONE decision, made here, published to CSS as a class. The previous version
+  // asked JS for the aspect and CSS for `max-aspect-ratio: 1/1` separately —
+  // and on an in-app mobile browser those two disagree, because the media
+  // feature uses the layout viewport while innerWidth/innerHeight report the
+  // visual one. The result was the worst possible combination: the portrait
+  // SCALE applied to a still-landscape element, so the panel rendered half as
+  // wide again as its own hole punch and hung off it.
   const CARR = carriersFor(innerWidth / innerHeight);
+  const portrait = CARR !== CARRIER;
+  document.body.classList.toggle('portrait', portrait);
   const items = {};
   const holeScene = new THREE.Scene();
 
@@ -64,6 +73,11 @@ export function buildPanels(scene, cssScene, M, stops, market) {
     const c = CARR[key];
     const el = document.getElementById(key);   // element ids match carrier keys
     const scale = c.w / c.el[0];
+
+    // The element's box is set from the carrier rather than left to CSS, so the
+    // HTML and the hole punch cannot disagree about how big the panel is.
+    el.style.width = c.el[0] + 'px';
+    el.style.height = c.el[1] + 'px';
 
     const obj = new CSS3DObject(el);
     obj.position.fromArray(c.pos);
