@@ -108,6 +108,116 @@ console.log('\n── 3. flight paths stay inside the building ──');
   });
 }
 
+console.log('\n── 3b. trading wall screens ──');
+{
+  const S = stopsFor(1.7778);
+  const R = C.ROOM.trading;
+  const DOOR_IN = 7.20;            // office → trading doorway
+
+  // where is the camera at an arbitrary p? mirrors main.js: smoothstep the
+  // segment parameter, then evaluate the same Catmull-Rom through the vias
+  const sstep = t => { t = Math.max(0, Math.min(1, t)); return t * t * t * (t * (t * 6 - 15) + 10); };
+  function camAt(p) {
+    for (const seg of C.TIMELINE) {
+      if (p < seg.p0 || p > seg.p1) continue;
+      if (seg.t === 'hold') return S[seg.stop].pos;
+      const pts = [S[seg.from].pos, ...(seg.via || []), S[seg.to].pos];
+      return crPoint(pts, sstep((p - seg.p0) / (seg.p1 - seg.p0)));
+    }
+    return S.note.pos;
+  }
+
+  const [sa, sb] = C.SCREEN_WINDOW;
+
+  // 1 · every screen is physically on the trading room's back wall
+  for (const [key, s] of Object.entries(C.SCREEN)) {
+    const [x, y, z] = s.pos;
+    const derived = s.w * s.el[1] / s.el[0];
+    if (Math.abs(derived - s.h) > 1e-9) { bad(`SCREEN.${key} h ${s.h} != w*aspect ${derived}`); continue; }
+    if (Math.abs(s.w / s.el[0] - 0.001) > 1e-9) { bad(`SCREEN.${key} scale ${(s.w / s.el[0]).toFixed(5)} — the wall is authored at 1px = 1mm`); continue; }
+    if (Math.abs(x) + s.w / 2 > R.hw) { bad(`SCREEN.${key} x span exceeds the trading room half-width ${R.hw}`); continue; }
+    if (y - s.h / 2 < 0 || y + s.h / 2 > R.h) { bad(`SCREEN.${key} y span [${(y - s.h / 2).toFixed(2)},${(y + s.h / 2).toFixed(2)}] escapes the room height ${R.h}`); continue; }
+    if (z <= DOOR_IN || z > R.z1) { bad(`SCREEN.${key} z ${z} is not on the trading back wall (${DOOR_IN}..${R.z1})`); continue; }
+    ok(`SCREEN.${key} ${s.w}x${s.h.toFixed(2)}m at [${x},${y},${z}] — on the wall, 1px=1mm`);
+  }
+
+  // 2 · the window must not light a screen while a wall is still in the way.
+  // Hole punches do not depth-test, so a screen lit from the office would
+  // punch a rectangle straight through the dividing wall.
+  const zOpen = camAt(sa)[2], zClose = camAt(sb)[2];
+  if (zOpen <= DOOR_IN) bad(`SCREEN_WINDOW opens at ${sa} with the camera at z=${zOpen.toFixed(2)}, still short of the doorway at ${DOOR_IN}`);
+  else ok(`SCREEN_WINDOW opens at ${sa} with the camera at z=${zOpen.toFixed(2)}, past the doorway (${DOOR_IN})`);
+
+  // 3 · and must be shut before the study panel claims the frame
+  const spreadOpen = C.PANEL_WINDOW.spread[0];
+  if (sb >= spreadOpen) bad(`SCREEN_WINDOW closes at ${sb}, not before the study spread opens at ${spreadOpen}`);
+  else ok(`SCREEN_WINDOW closes ${sb} before the study spread opens ${spreadOpen} (camera z=${zClose.toFixed(2)})`);
+
+  // 4 · every screen is actually in front of the camera across the window,
+  // which is the geometric half of the guard panels.js applies at runtime
+  {
+    let worst = null;
+    for (let i = 0; i <= 40 && !worst; i++) {
+      const p = sa + (sb - sa) * (i / 40);
+      const cp = camAt(p);
+      for (const [key, s] of Object.entries(C.SCREEN)) {
+        // camera looks toward +z here, so "in front" is simply greater z
+        if (s.pos[2] - cp[2] < 0.15) { worst = { key, p, z: cp[2] }; break; }
+      }
+    }
+    if (worst) bad(`SCREEN.${worst.key} is behind/at the camera at p=${worst.p.toFixed(3)} (cam z=${worst.z.toFixed(2)})`);
+    else ok(`all ${Object.keys(C.SCREEN).length} screens stay in front of the camera across [${sa},${sb}]`);
+  }
+
+  // 5 · and each one is FULLY inside the frame at the reading stop. This is
+  // the check that was missing: it only tested 16:9, and 16:10 is narrower,
+  // so the flanking stacks ran off the side of every laptop. 4:3 is excluded
+  // deliberately — a 2.6m board leaves no room beside it at that aspect, and
+  // the side stacks are peripheral dressing there by design.
+  {
+    const t = Math.tan((C.FOV * Math.PI / 180) / 2);
+    const cam = S.board.pos;
+    for (const [aspect, label] of [[2.40, '21:9'], [1.7778, '16:9'], [1.60, '16:10']]) {
+      const off = [];
+      for (const [key, s] of Object.entries(C.SCREEN)) {
+        const d = s.pos[2] - cam[2];
+        const halfH = d * t, halfW = halfH * aspect;
+        if (Math.abs(s.pos[0] - cam[0]) + s.w / 2 > halfW ||
+          Math.abs(s.pos[1] - cam[1]) + s.h / 2 > halfH) off.push(key);
+      }
+      if (off.length) bad(`screens clipped by the frame at ${label}: ${off.join(', ')}`);
+      else ok(`all screens fully inside the frame at ${label}`);
+    }
+  }
+
+  // 6 · the bezels in world.js have to stay aligned with these, or the DOM
+  // floats in front of a housing that is no longer behind it
+  {
+    const flank = Object.values(C.SCREEN).filter(s => s.w === 0.38);
+    const con = Object.values(C.SCREEN).filter(s => s.w === 0.68);
+    const xs = [...new Set(flank.map(s => Math.abs(s.pos[0])))];
+    const ys = [...new Set(con.map(s => s.pos[1]))];
+    if (xs.length !== 1 || Math.abs(xs[0] - 1.55) > 1e-9) bad(`flank screens are at x=±${xs} — world.js addBezel is hard-coded to ±1.55`);
+    else if (ys.length !== 1 || Math.abs(ys[0] - 0.96) > 1e-9) bad(`console screens are at y=${ys} — world.js addBezel is hard-coded to 0.955`);
+    else ok(`bezel anchors agree with world.js (flank x=±1.55, console y=0.96)`);
+  }
+}
+
+console.log('\n── 3c. chapter labels flip on room arrival ──');
+{
+  // each chapter after the first should land exactly where the camera reaches
+  // that room's reveal framing, so the header never names the room behind you
+  const arrivals = [['officeWide', '01'], ['tradingWide', '02'], ['studyWide', '03'], ['rooftopWide', '04']];
+  arrivals.forEach(([stop, tag], i) => {
+    const seg = C.TIMELINE.find(s => s.t === 'move' && s.to === stop);
+    const ch = C.CHAPTERS[i + 1];
+    if (!seg) { bad(`no timeline segment arrives at ${stop}`); return; }
+    if (!ch || !ch.name.startsWith(tag)) { bad(`CHAPTERS[${i + 1}] is not the ${tag} entry`); return; }
+    if (Math.abs(ch.p - seg.p1) > 1e-9) bad(`chapter "${ch.name}" flips at ${ch.p} but the camera reaches ${stop} at ${seg.p1}`);
+    else ok(`"${ch.name}" flips at ${ch.p} — exactly on arrival at ${stop}`);
+  });
+}
+
 console.log('\n── 4. timeline / stations agree ──');
 {
   let last = 0;

@@ -416,25 +416,13 @@ export function buildWorld(scene, market = null) {
     // rather than a poster on an empty office wall. All the screens share ONE
     // chart-sheet texture via UV sub-rects and merge into a single draw call.
     {
-      const tickers = (market && market.holdings) ? market.holdings : null;
-      const sheetTex = TEX.chartSheetTexture(3, 2, 1024, tickers);
-      const screenMat = new THREE.MeshBasicMaterial({ map: sheetTex, toneMapped: false, fog: true });
-      const COLS = 3, ROWS = 2;
-      const screenGeos = [];
-      let cellIdx = 0;
-      const addScreen = (w, h, x, y, z, ry = Math.PI) => {
-        const gm = new THREE.PlaneGeometry(w, h);
-        const cx = cellIdx % COLS, cy = Math.floor(cellIdx / COLS) % ROWS;
-        cellIdx++;
-        const uv = gm.getAttribute('uv');
-        for (let i = 0; i < uv.count; i++) {
-          uv.setXY(i, (uv.getX(i) + cx) / COLS, (uv.getY(i) + (ROWS - 1 - cy)) / ROWS);
-        }
-        gm.rotateY(ry);
-        gm.translate(x, y, z);
-        screenGeos.push(gm);
-      };
-
+      // The screens themselves are CSS3D panels now (see js/screens.js) — a
+      // texture minified into ~200 screen px and then resampled by the DPR
+      // cap could not compete with the board's real DOM text, and next to it
+      // the whole wall looked out of focus. What stays here is the physical
+      // half: bezels, housings, the credenza and the light they throw. The
+      // DOM lands exactly in the bezel openings because both read the same
+      // positions out of config.SCREEN.
       const bezels = [];
       const addBezel = (w, h, x, y, z, d = 0.05) => {
         const gm = new THREE.BoxGeometry(w, h, d);
@@ -442,37 +430,23 @@ export function buildWorld(scene, market = null) {
         bezels.push(gm);
       };
 
-      // flanking stacks: three screens per side in the x margin
+      // flanking stacks: three screens per side in the x margin. These MUST
+      // track config.SCREEN — the DOM lands in the opening, so a bezel that
+      // drifts leaves a floating panel with no housing behind it.
       for (const s of [-1, 1]) {
-        for (let i = 0; i < 3; i++) {
-          const y = 1.20 + i * 0.52;
-          addBezel(0.47, 0.33, s * 1.72, y, 15.885);
-          addScreen(0.42, 0.28, s * 1.72, y, 15.858);
-        }
+        for (let i = 0; i < 3; i++) addBezel(0.43, 0.30, s * 1.55, 1.20 + i * 0.52, 15.885);
       }
-      // low console screens under the board, angled up slightly
-      for (const s of [-1, 1]) {
-        addBezel(0.74, 0.30, s * 0.52, 0.90, 15.60, 0.06);
-        addScreen(0.68, 0.25, s * 0.52, 0.905, 15.565, Math.PI);
-      }
+      // low console screens under the board
+      for (const s of [-1, 1]) addBezel(0.74, 0.30, s * 0.52, 0.955, 15.60, 0.06);
 
-      const screens = new THREE.Mesh(mergeGeometries(screenGeos), screenMat);
-      screens.frustumCulled = false;
-      trading.add(screens);
       trading.add(rc(new THREE.Mesh(mergeGeometries(bezels), M.darkSteel)));
 
       // credenza the console screens sit on
       trading.add(sc(at(B(2.9, 0.74, 0.44, M.darkSteel), 0, 0.37, 15.66)));
       trading.add(sc(at(B(3.0, 0.04, 0.50, M.concrete2), 0, 0.76, 15.66)));
 
-      // ticker crawl directly above the board
-      const tick = TEX.tickerTexture(4096, 160, tickers);
-      tick.repeat.set(3.1, 1);
-      const tickMat = new THREE.MeshBasicMaterial({ map: tick, toneMapped: false });
-      const tickMesh = at(new THREE.Mesh(new THREE.PlaneGeometry(3.4, 0.15), tickMat), 0, 2.60, 15.86, 0, Math.PI, 0);
-      trading.add(tickMesh);
+      // housing for the ticker crawl directly above the board
       trading.add(rc(at(B(3.5, 0.22, 0.05, M.darkSteel), 0, 2.60, 15.90)));
-      anim.push({ update: () => { tick.offset.x -= 0.0016; } });
 
       // exposed structure across the top of frame
       for (let i = 0; i < 5; i++) {
@@ -482,8 +456,8 @@ export function buildWorld(scene, market = null) {
       trading.add(rc(at(B(0.30, 0.10, 1.30, M.darkSteel), 1.5, 2.94, 15.4)));
 
       // screen bleed onto the wall
-      for (const s of [-1, 1]) trading.add(at(glowSprite(0x5f9ad8, 1.9, 0.20), s * 1.62, 1.76, 15.80));
-      trading.add(at(glowSprite(0x4f86c8, 2.2, 0.16), 0, 0.96, 15.52));
+      for (const s of [-1, 1]) trading.add(at(glowSprite(0x5f9ad8, 1.9, 0.20), s * 1.55, 1.76, 15.80));
+      trading.add(at(glowSprite(0x4f86c8, 2.2, 0.16), 0, 1.00, 15.52));
       const consoleLight = new THREE.PointLight(0x6ea8e8, 2.0, 3.4, 2);
       consoleLight.position.set(0, 1.05, 15.20); trading.add(consoleLight);
       const stackLight = new THREE.PointLight(0x6ea8e8, 1.6, 3.0, 2);

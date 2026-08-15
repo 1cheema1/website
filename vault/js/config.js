@@ -119,6 +119,44 @@ export const FIXED_STOP = {
   rooftopWide: { pos: [0, 1.62, 24.50], tgt: [0, 1.05, 27.30] }
 };
 
+// ── Trading wall screens (CSS3D, like the board) ───────────────
+// Every entry is scale 0.001 exactly — 1 CSS px per millimetre — so the DOM
+// can be laid out in px and land at the right physical size without anyone
+// doing arithmetic. h is derived from the element aspect, same rule as
+// CARRIER, so the punch plane and the bezel behind it agree exactly.
+// Positions match the geometry these replaced, so the bezels still fit.
+const screen = (o) => ({ ...o, h: o.w * o.el[1] / o.el[0] });
+// x=±1.55 rather than the ±1.72 the textured versions used: the board's
+// visible edge is at ±1.30 and the frame half-width at this stop is only
+// 1.80 on a 16:10 display, so the old stacks ran off the side of the screen.
+// Blur hid that; sharp DOM does not. y=0.96 on the consoles for the same
+// reason at the bottom edge — they were sitting 3cm inside it.
+export const SCREEN = {
+  scr0: screen({ el: [380, 250], w: 0.38, pos: [ 1.55, 1.20, 15.858] }),
+  scr1: screen({ el: [380, 250], w: 0.38, pos: [ 1.55, 1.72, 15.858] }),
+  scr2: screen({ el: [380, 250], w: 0.38, pos: [ 1.55, 2.24, 15.858] }),
+  scr3: screen({ el: [380, 250], w: 0.38, pos: [-1.55, 1.20, 15.858] }),
+  scr4: screen({ el: [380, 250], w: 0.38, pos: [-1.55, 1.72, 15.858] }),
+  scr5: screen({ el: [380, 250], w: 0.38, pos: [-1.55, 2.24, 15.858] }),
+  con0: screen({ el: [680, 250], w: 0.68, pos: [ 0.52, 0.96, 15.565] }),
+  con1: screen({ el: [680, 250], w: 0.68, pos: [-0.52, 0.96, 15.565] }),
+  ticker: screen({ el: [3400, 150], w: 3.40, pos: [0, 2.60, 15.86] })
+};
+
+// When the wall's screens are live. Narrower than the board's window at BOTH
+// ends, for two different reasons.
+//
+// Front: hole punches don't depth-test (see panels.js), so a screen lit while
+// the camera is still short of the office/trading doorway at z=7.20 would
+// punch a rectangle straight through the dividing wall. 0.552 is past it.
+//
+// Back: leaving the reading stop the camera accelerates at the study door and
+// crosses the wall plane these sit on — by p=0.680 it is at z=15.63, already
+// past the console screens at 15.565. inFrontOf() would catch that, but as a
+// hard snap. Closing at 0.670 (camera z≈14.4) lets them fade out while they
+// are still ahead of you, which is what passing them should look like.
+export const SCREEN_WINDOW = [0.552, 0.670];
+
 // ── Timeline ───────────────────────────────────────────────────
 export const TIMELINE = [
   { t: 'hold', p0: 0.000, p1: 0.078, stop: 'intro' },
@@ -186,12 +224,17 @@ export const MOOD = [
   { z: 32, fog: 0x33283a, near: 10.0, far: 120, exp: 1.12 }
 ];
 
+// These flip exactly when the camera ARRIVES at each room's reveal framing
+// (the *Wide stops), not a little before or after. They used to be eyeballed
+// — 0.43/0.57/0.72/0.86 — which left the header reading "01 — Experience"
+// while the trading floor was already filling the frame. validate.mjs pins
+// them to the timeline so they cannot drift again.
 export const CHAPTERS = [
-  { p: 0.00, name: 'The Vault' },
-  { p: 0.43, name: '01 — Experience' },
-  { p: 0.57, name: '02 — Positions' },
-  { p: 0.72, name: '03 — Research' },
-  { p: 0.86, name: '04 — Contact' }
+  { p: 0.000, name: 'The Vault' },
+  { p: 0.390, name: '01 — Experience' },
+  { p: 0.560, name: '02 — Positions' },
+  { p: 0.730, name: '03 — Research' },
+  { p: 0.900, name: '04 — Contact' }
 ];
 
 // ── Intro beat map ───────────────────────────────────────────────

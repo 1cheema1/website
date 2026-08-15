@@ -193,7 +193,7 @@ computeStops();
 
 step(70, 'Setting the type');
 await paint();
-const panels = buildPanels(scene, cssScene, world.M, stops);
+const panels = buildPanels(scene, cssScene, world.M, stops, MARKET);
 panels.orient();
 
 // Compile every shader program up front. Three.js otherwise compiles lazily
@@ -359,21 +359,35 @@ addEventListener('keyup', (e) => {
 });
 addEventListener('blur', () => keys.clear());
 
+// One physical flick = exactly one station, and the latch is what enforces it.
+//
+// The subtlety that broke this: a macOS trackpad keeps emitting wheel events
+// for well over a second AFTER the finger lifts, as momentum decays. The old
+// latch was 140ms and only extended on events it accepted, so the momentum
+// tail sailed straight through it. Each of those events found a hop already
+// in flight and set `pending`, which fired the instant the hop landed — you
+// touched the contact card for a beat and were then carried off to the
+// message pad without asking. So: EVERY wheel event pushes the latch out,
+// accepted or not. A gesture is only new once the wheel has been quiet for
+// WHEEL_QUIET, which is what "the finger left the pad" actually looks like.
+const WHEEL_QUIET = 420;
 addEventListener('wheel', (e) => {
   if (navLocked) return;
   e.preventDefault();
   const t = performance.now();
-  if (t < wheelLatch) return;      // one physical flick = one station
-  wheelLatch = t + 140;
-  advance(e.deltaY > 0 ? 1 : -1);
+  const fresh = t >= wheelLatch;
+  wheelLatch = t + WHEEL_QUIET;
+  if (fresh) advance(e.deltaY > 0 ? 1 : -1);
 }, { passive: false });
 
-let touchY = null;
-addEventListener('touchstart', (e) => { touchY = e.touches[0].clientY; }, { passive: true });
+// Same rule for touch: one swipe is one station. This used to re-fire every
+// 26px of travel, so a single long drag queued several hops.
+let touchY = null, touchFired = false;
+addEventListener('touchstart', (e) => { touchY = e.touches[0].clientY; touchFired = false; }, { passive: true });
 addEventListener('touchmove', (e) => {
-  if (navLocked || touchY === null) return;
+  if (navLocked || touchY === null || touchFired) return;
   const dy = touchY - e.touches[0].clientY;
-  if (Math.abs(dy) > 26) { advance(dy > 0 ? 1 : -1); touchY = e.touches[0].clientY; }
+  if (Math.abs(dy) > 26) { advance(dy > 0 ? 1 : -1); touchFired = true; }
 }, { passive: true });
 addEventListener('touchend', () => { touchY = null; });
 
@@ -646,8 +660,24 @@ addEventListener('resize', resize);
 // ═══════════════════ loop ═══════════════════
 let prev = performance.now(), firstFrame = true, firstFrameAt = 0, loaderDone = false;
 
+// Every carrier's camera stop is DERIVED from the viewport aspect via
+// fitDistance(), and the derivation runs once at module load. If the window
+// settles on its real size after that — which is normal on a restored tab, on
+// mobile when the URL bar collapses, and reliably under headless capture —
+// nothing recomputes, because no resize event ever fires. The result is a
+// correctly-drawn scene framed for an aspect the viewer never had: everything
+// uniformly too small, with clear colour under the floor. One re-derive on the
+// first real frame costs nothing and makes the framing depend on the layout
+// that actually shipped rather than the one that happened to exist at import.
+let didSettle = false;
+
 function frame(now) {
   const dt = Math.min(0.05, (now - prev) / 1000); prev = now;
+
+  if (!didSettle) {
+    didSettle = true;
+    if (Math.abs(camera.aspect - innerWidth / innerHeight) > 1e-6) resize();
+  }
 
   if (LOCKED !== null) p = LOCKED;
   // otherwise `p` is owned by whichever tween is live: the autoplay intro

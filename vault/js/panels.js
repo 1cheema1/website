@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { CSS3DObject } from '../lib/CSS3DRenderer.js';
-import { CARRIER, FLANK, FLANK_WINDOW, PANEL_WINDOW } from './config.js';
+import { CARRIER, FLANK, FLANK_WINDOW, PANEL_WINDOW, SCREEN, SCREEN_WINDOW } from './config.js';
+import { buildScreenElements } from './screens.js';
 
 const clamp01 = v => v < 0 ? 0 : v > 1 ? 1 : v;
 function crossfade4(p, [a, b, c, d]) {
@@ -52,7 +53,7 @@ function holeMaterial() {
   });
 }
 
-export function buildPanels(scene, cssScene, M, stops) {
+export function buildPanels(scene, cssScene, M, stops, market) {
   const items = {};
   const holeScene = new THREE.Scene();
 
@@ -91,6 +92,35 @@ export function buildPanels(scene, cssScene, M, stops) {
     holeScene.add(hole);
 
     flank[key] = { obj, hole, c };
+  }
+
+  // ── trading wall screens ─────────────────────────────────────────
+  // Same hole-punch treatment as the board, for the same reason: these have
+  // to stay legible, and anything drawn into the WebGL canvas is resampled
+  // by the DPR cap before it reaches a retina display.
+  const screens = {};
+  {
+    const els = buildScreenElements(market);
+    for (const key of Object.keys(SCREEN)) {
+      const c = SCREEN[key];
+      const el = els[key];
+      if (!el) continue;
+      el.style.width = c.el[0] + 'px';
+      el.style.height = c.el[1] + 'px';
+
+      const obj = new CSS3DObject(el);
+      obj.position.fromArray(c.pos);
+      const scale = c.w / c.el[0];
+      obj.scale.set(scale, scale, scale);
+      cssScene.add(obj);
+
+      const hole = new THREE.Mesh(new THREE.PlaneGeometry(c.w, c.h), holeMaterial());
+      hole.position.fromArray(c.pos);
+      hole.frustumCulled = true;
+      holeScene.add(hole);
+
+      screens[key] = { obj, hole, c };
+    }
   }
 
   // ── physical stock behind each panel ────────────────────────────
@@ -195,6 +225,23 @@ export function buildPanels(scene, cssScene, M, stops) {
         hole.position.fromArray(flank[key].c.pos).addScaledVector(n, 0.0006);
       }
     }
+    // The wall screens sit FLAT in the wall plane — no lookAt. Toeing them in
+    // toward the reading stop turned each panel into a trapezoid inside its
+    // own axis-aligned bezel, and the mismatch was obvious: housing showing
+    // along one edge and none along the other.
+    //
+    // PI about Y, not identity: this camera looks toward +Z, so an unrotated
+    // element has its local +X running to SCREEN-LEFT and every label reads
+    // mirrored. The textured planes these replaced did the same thing with
+    // gm.rotateY(Math.PI).
+    for (const key of Object.keys(screens)) {
+      const { obj, hole } = screens[key];
+      obj.rotation.set(0, Math.PI, 0);
+      hole.rotation.set(0, Math.PI, 0);
+      // pull the punch a hair toward the camera so it beats its own bezel
+      hole.position.fromArray(screens[key].c.pos);
+      hole.position.z -= 0.0006;
+    }
     for (const b of backs) {
       const src = items[b.key] || flank[b.key];
       if (src) b.g.quaternion.copy(src.obj.quaternion);
@@ -217,7 +264,19 @@ export function buildPanels(scene, cssScene, M, stops) {
       flank[key].hole.visible = on;
       flank[key].obj.element.style.opacity = on ? String(fo) : '0';
     }
+    // The wall screens fade rather than snap — they cover a lot of the frame
+    // and popping nine of them on at once reads as a glitch. The last 8% of
+    // the window at each end is the ramp.
+    const [sa, sb] = SCREEN_WINDOW;
+    const ramp = (sb - sa) * 0.12;
+    const so = crossfade4(p, [sa, sa + ramp, sb - ramp, sb]);
+    for (const key of Object.keys(screens)) {
+      const on = so > 0 && inFrontOf(camera, screens[key].obj.position);
+      screens[key].obj.visible = on;
+      screens[key].hole.visible = on;
+      screens[key].obj.element.style.opacity = on ? String(so) : '0';
+    }
   }
 
-  return { items, flank, holeScene, orient, update };
+  return { items, flank, screens, holeScene, orient, update };
 }
