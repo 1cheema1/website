@@ -67,7 +67,7 @@ if (new URLSearchParams(location.search).get('debug') === '1') {
 // from before it existed — these look identical from the outside. BUILD is
 // bumped on every deploy that changes behaviour, so if the number here is not
 // the current one, the page is stale and nothing else it says can be trusted.
-const BUILD = '2026-08-16-cssbust-4';
+const BUILD = '2026-08-16-flat-5';
 if (new URLSearchParams(location.search).get('diag') === '1') {
   // Attach immediately if the body already exists, and via the event if not.
   // main.js is a module with top-level await, so it can resume after
@@ -91,6 +91,8 @@ if (new URLSearchParams(location.search).get('diag') === '1') {
           .getPropertyValue('--muted').trim() + '   (expect #6b6357)\n' +
         'dpr      ' + devicePixelRatio + '   coarse ' +
           matchMedia('(pointer: coarse)').matches + '\n' +
+        'flatMode ' + (window.__three && window.__three.panels
+          ? window.__three.panels.flat : '?') + '   (expect true on a phone)\n' +
         (() => {
           const T = window.__three; if (!T) return 'three    (not ready)';
           const cv = T.renderer.domElement.getBoundingClientRect();
@@ -98,6 +100,12 @@ if (new URLSearchParams(location.search).get('diag') === '1') {
           const cd = cs && cs.firstElementChild
             ? cs.firstElementChild.getBoundingClientRect() : null;
           const it = T.panels && T.panels.items && T.panels.items.sheet;
+          if (it && !it.obj) {
+            const rr = it.el.getBoundingClientRect();
+            return 'sheetCard ' + Math.round(rr.width) + ' x ' + Math.round(rr.height) +
+                   ' @ ' + Math.round(rr.left) + ',' + Math.round(rr.top) +
+                   '\nshown    ' + it.el.classList.contains('show');
+          }
           const r = [];
           r.push('canvas   ' + Math.round(cv.width) + ' x ' + Math.round(cv.height) +
                  ' @ ' + Math.round(cv.left) + ',' + Math.round(cv.top));
@@ -1029,9 +1037,13 @@ const HIT_SEL = 'a[href],button,textarea,input,.pos-row';
 
 function hittablePanels() {
   const out = [];
+  // Flat cards are ordinary DOM sitting above the canvas — the browser hit-tests
+  // them correctly on its own, and raycasting a hole that does not exist would
+  // only get in the way.
+  if (panels.flat) { if (panels.resume.obj.visible) out.push(panels.resume); return out; }
   if (panels.resume.obj.visible) out.push(panels.resume);
   for (const k of Object.keys(panels.items)) {
-    if (panels.items[k].obj.visible) out.push(panels.items[k]);
+    if (panels.items[k].obj && panels.items[k].obj.visible) out.push(panels.items[k]);
   }
   return out;
 }
@@ -1436,7 +1448,9 @@ function frame(now) {
       `fog ${scene.fog.color.getHexString()} n${scene.fog.near.toFixed(1)} f${scene.fog.far.toFixed(1)} exp ${renderer.toneMappingExposure.toFixed(2)}\n` +
       `clear ${renderer.getClearColor(new THREE.Color()).getHexString()}\n` +
       Object.keys(panels.items).map(k => {
-        const it = panels.items[k], cs = getComputedStyle(it.obj.element);
+        const it = panels.items[k];
+        if (!it.obj) return `${k.padEnd(7)} flat`;
+        const cs = getComputedStyle(it.obj.element);
         return `${k.padEnd(7)} vis=${it.obj.visible ? 1 : 0} disp=${cs.display} op=${cs.opacity}`;
       }).join('\n') + '\n' +
       Object.keys(panels.flank).map(k => {

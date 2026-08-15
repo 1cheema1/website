@@ -441,3 +441,88 @@ body.portrait #resume .rskill span{min-width:150px;font-size:16px;}
 body.portrait #resume .rfoot a{font-size:22px;padding:22px 26px;}
 body.portrait #resume .rfoot button{font-size:17px;padding:22px 20px;}
 
+
+/* ═══ FLAT PANELS (portrait) ══════════════════════════════════════
+   The card sits over the scene instead of inside it. Fixed to the viewport,
+   scrollable if the content is taller than the screen, and sized in real
+   viewport units — so none of the projection maths that was misplacing these
+   on real phones is involved at all.
+
+   dvh, not vh: on iOS the URL bar collapses as you scroll and vh keeps
+   reporting the tall value, which is what pushes fixed elements off screen. */
+body.portrait .p3d.flat{
+  position:fixed;
+  left:12px; right:12px;
+  top:calc(env(safe-area-inset-top, 0px) + 62px);
+  bottom:calc(env(safe-area-inset-bottom, 0px) + 54px);
+  width:auto !important; height:auto !important;
+  max-height:none;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  z-index:5;
+  opacity:0; visibility:hidden; pointer-events:none;
+  transition:opacity .45s ease, visibility 0s linear .45s;
+  box-shadow:0 26px 70px rgba(0,0,0,.66);
+}
+body.portrait .p3d.flat.show{
+  opacity:1; visibility:visible; pointer-events:auto;
+  transition:opacity .45s ease, visibility 0s linear 0s;
+}
+/* Type is set for a real screen now rather than a projected surface, so the
+   portrait sizes above (tuned for a 760px element seen at ~60% of a phone)
+   are far too large here. Back to something a phone actually reads at. */
+body.portrait .p3d.flat{font-size:15px;}
+body.portrait #sheet.flat{padding:22px 20px;}
+body.portrait #sheet.flat h1{font-size:30px;}
+body.portrait #sheet.flat .sub{font-size:11px;}
+body.portrait #sheet.flat .avail{font-size:10.5px;padding:6px 9px;}
+body.portrait #sheet.flat .ph{width:58px;height:72px;}
+body.portrait #sheet.flat .doc{font-size:10px;}
+body.portrait #sheet.flat .doc b{font-size:14px;}
+body.portrait #sheet.flat .body{padding-bottom:8px;gap:16px;}
+body.portrait #sheet.flat .rt em{font-size:18px;}
+body.portrait #sheet.flat .rt span,body.portrait #sheet.flat .rr{font-size:10px;}
+body.portrait #sheet.flat li{font-size:14px;line-height:1.45;padding-left:14px;}
+body.portrait #sheet.flat li:before{top:9px;width:7px;}
+body.portrait #sheet.flat .foot{position:static;margin-top:14px;font-size:10px;}
+
+body.portrait #board.flat{padding:22px 20px;}
+body.portrait #board.flat h2{font-size:30px;}
+body.portrait #board.flat .r{font-size:10px;}
+body.portrait #board.flat td.sym{font-size:17px;}
+body.portrait #board.flat td.desc{font-size:14px;}
+body.portrait #board.flat td.stack{font-size:10.5px;}
+body.portrait #board.flat td.n{font-size:14px;}
+body.portrait #board.flat .bf{position:static;margin-top:14px;font-size:10px;}
+
+body.portrait #spread.flat{padding:0;}
+body.portrait #spread.flat .pg{padding:22px 20px 6px;}
+body.portrait #spread.flat h3{font-size:11px;margin:16px 0 8px;}
+body.portrait #spread.flat .hold em{font-size:19px;}
+body.portrait #spread.flat .hold span{font-size:11px;}
+body.portrait #spread.flat .alloc .tk{font-size:18px;width:84px;}
+body.portrait #spread.flat .alloc .nm{font-size:10.5px;}
+body.portrait #spread.flat .alloc .pf{font-size:14px;width:76px;}
+body.portrait #spread.flat .disc{font-size:9.5px;}
+body.portrait #spread.flat .prob em{font-size:18px;}
+body.portrait #spread.flat .prob span{font-size:13.5px;}
+body.portrait #spread.flat .pn{position:static;font-size:10px;padding:0 20px 14px;}
+
+body.portrait #card.flat{padding:26px 22px;}
+body.portrait #card.flat h1{font-size:34px;}
+body.portrait #card.flat .role{font-size:11px;}
+body.portrait #card.flat .rows{gap:18px;margin-top:20px;}
+body.portrait #card.flat .row .k{font-size:10.5px;}
+body.portrait #card.flat .row .v{font-size:17px;}
+body.portrait #card.flat .stamp,body.portrait #card.flat .sig{position:static;}
+body.portrait #card.flat .sig{text-align:left;margin-top:18px;}
+body.portrait #card.flat .sig em{font-size:26px;}
+body.portrait #card.flat .sig span,body.portrait #card.flat .stamp{font-size:10px;}
+body.portrait #card.flat .stamp{display:inline-block;margin-top:18px;padding:7px 11px;}
+
+body.portrait #note.flat{padding:22px 20px;}
+body.portrait #note.flat .nhead{font-size:12px;}
+body.portrait #note.flat textarea{font-size:15px;min-height:120px;}
+body.portrait #note.flat input{font-size:14px;}
+body.portrait #note.flat button{font-size:12px;padding:13px 18px;}
+body.portrait #note.flat .nstatus{font-size:11px;}

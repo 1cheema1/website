@@ -66,12 +66,35 @@ export function buildPanels(scene, cssScene, M, stops, market) {
   const CARR = carriersFor(innerWidth / innerHeight);
   const portrait = CARR !== CARRIER;
   document.body.classList.toggle('portrait', portrait);
+
+  // ── portrait reads the panels FLAT ────────────────────────────
+  // On a phone the panels stop being projected into the scene and become plain
+  // fixed-position cards over it. This is a retreat, and a deliberate one: the
+  // CSS3D projection has been placing the panel beside its own hole-punch on
+  // real devices, I could not reproduce it (headless Chrome refuses to render
+  // below 500px wide), and three attempts to fix it by reasoning from
+  // screenshots were all wrong. A flat card cannot have that failure mode —
+  // there is no second renderer to disagree with.
+  //
+  // It is also just better here. A 3D-projected panel on a 393px screen was
+  // never going to beat a readable card, and the room still renders behind it
+  // with the paper prop on the desk where the panel would have been.
+  const FLAT = portrait;
   const items = {};
   const holeScene = new THREE.Scene();
 
   for (const key of Object.keys(CARR)) {
     const c = CARR[key];
     const el = document.getElementById(key);   // element ids match carrier keys
+
+    if (FLAT) {
+      // No CSS3DObject, no hole. The element keeps its own layout and is
+      // positioned by CSS; update() just toggles a class.
+      el.classList.add('flat');
+      items[key] = { el, flat: true, c, obj: null, hole: null };
+      continue;
+    }
+
     const scale = c.w / c.el[0];
 
     // The element's box is set from the carrier rather than left to CSS, so the
@@ -255,6 +278,7 @@ export function buildPanels(scene, cssScene, M, stops, market) {
   function orient() {
     for (const key of Object.keys(items)) {
       const { obj, hole } = items[key];
+      if (!obj || !hole) continue;               // flat panels are not projected
       const s = stops[key];
       if (!s) continue;
       obj.lookAt(s.pos);
@@ -301,6 +325,7 @@ export function buildPanels(scene, cssScene, M, stops, market) {
     }
     for (const b of backs) {
       const src = items[b.key] || flank[b.key] || (b.key === 'resume' ? resume : null);
+      if (src && !src.obj) continue;   // flat: the paper prop keeps its built orientation
       if (src) b.g.quaternion.copy(src.obj.quaternion);
     }
   }
@@ -315,6 +340,21 @@ export function buildPanels(scene, cssScene, M, stops, market) {
   function setResume(v) { resumeOn = v; }
 
   function update(p, camera) {
+    if (FLAT) {
+      for (const key of Object.keys(items)) {
+        const [a, b] = PANEL_WINDOW[key];
+        items[key].el.classList.toggle('show', p >= a && p <= b);
+      }
+      // the résumé desk is still a 3D excursion; its panel stays projected
+      resume.obj.visible = resumeOn > 0;
+      resume.hole.visible = resumeOn > 0;
+      resume.obj.element.style.opacity = resumeOn > 0 ? String(resumeOn) : '0';
+      for (const k of Object.keys(screens)) {
+        const on = false; screens[k].obj.visible = on; screens[k].hole.visible = on;
+      }
+      for (const k of Object.keys(flank)) { flank[k].obj.visible = false; flank[k].hole.visible = false; }
+      return;
+    }
     resume.obj.visible = resumeOn > 0;
     resume.hole.visible = resumeOn > 0;
     resume.obj.element.style.opacity = resumeOn > 0 ? String(resumeOn) : '0';
@@ -352,5 +392,5 @@ export function buildPanels(scene, cssScene, M, stops, market) {
     }
   }
 
-  return { items, flank, screens, resume, holeScene, orient, update, setResume };
+  return { items, flank, screens, resume, holeScene, orient, update, setResume, flat: FLAT };
 }
