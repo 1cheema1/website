@@ -956,6 +956,29 @@ export function buildWorld(scene, market = null) {
   // 51 · rooms exposed so the loop can drop the ones out of range. Each is a
   // single Group, so hiding one skips its whole subtree in one test rather than
   // frustum-culling every mesh inside it.
+  // ── lights live OUTSIDE the cullable rooms ────────────────────
+  // This is load-bearing. three.js compiles a program per material against the
+  // number of lights in the scene, and it skips invisible subtrees when it
+  // gathers them — so hiding a room that contains lights changes the count and
+  // forces EVERY material to recompile. That is a multi-millisecond stall, and
+  // it fires exactly at a room boundary, which is exactly where the camera is
+  // moving. The result was a hitch on every transition.
+  //
+  // attach() re-parents while preserving the world transform, so nothing moves.
+  // Sprites and glows stay behind and are still culled with their room; only
+  // the lights are hoisted, keeping the count constant for the whole visit.
+  const lightRig = new THREE.Group(); root.add(lightRig);
+  for (const g of [anteGroup, office, trading, study, rooftop]) {
+    if (!g) continue;
+    const found = [];
+    g.traverse(o => { if (o.isLight) found.push(o); });
+    for (const L of found) {
+      const tgt = L.target && L.target.isObject3D ? L.target : null;
+      lightRig.attach(L);
+      if (tgt && tgt.parent && tgt.parent !== lightRig) lightRig.attach(tgt);
+    }
+  }
+
   const rooms = [
     { g: anteGroup, z0: ROOM.ante.z0,    z1: ROOM.ante.z1 },
     { g: office,    z0: ROOM.office.z0,  z1: ROOM.office.z1 },

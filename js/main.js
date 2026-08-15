@@ -244,6 +244,33 @@ await paint();
 const panels = buildPanels(scene, cssScene, world.M, stops, MARKET);
 panels.orient();
 
+// ── precompile, thoroughly ────────────────────────────────────────
+// Shader compilation is a synchronous stall, and any program not built here
+// gets built the first frame its object is drawn — which is mid-journey, and
+// is what "laggy in the initial stages between scrolls" was. Walking the
+// program count through the whole timeline showed it climbing 30 → 35 across
+// the first four stops, i.e. five compiles spread over the opening minute.
+//
+// Two things were missing. The hole-punch planes live in their own scene, so
+// they were never covered. And the intro's shard batches are InstancedMesh,
+// which needs a different program from the same material on a regular Mesh —
+// compiling the piggy whole does not compile the shards.
+//
+// Everything is visible at this point (room culling only starts in frame()),
+// so one pass per scene reaches all of it.
+renderer.compile(scene, camera);
+renderer.compile(panels.holeScene, camera);
+
+// Force the intro's own objects through a compile too: they are parented into
+// `scene` but several are hidden at p=0, and a hidden object is skipped.
+{
+  const hidden = [];
+  scene.traverse((o) => { if (o.isMesh && !o.visible) { hidden.push(o); o.visible = true; } });
+  if (hidden.length) renderer.compile(scene, camera);
+  for (const o of hidden) o.visible = false;
+}
+
+
 // Compile every shader program up front. Three.js otherwise compiles lazily
 // as each new material first enters view, and a shader compile is a hard
 // synchronous stall — that is what made the intro stutter, since the smash
@@ -251,7 +278,6 @@ panels.orient();
 // Paying it once, behind the loader, buys a smooth intro.
 step(86, 'Cutting the keyway');
 await paint();
-renderer.compile(scene, camera);
 
 // ═══════════════════ path curves ═══════════════════
 let curves = [];
@@ -787,7 +813,10 @@ const QUALITY = [
   { dpr: 1.0,  bloom: false, bokeh: false }    // 3 · floor
 ];
 let qTier = 0, qHoldUntil = 0;
-const Q_DOWN_MS = 27, Q_UP_MS = 15, Q_COOLDOWN = 2200;
+// Downward-biased on purpose. Stepping down is cheap insurance; stepping back
+// up reallocates every render target, so it is rare and requires real headroom.
+const Q_DOWN_MS = 27, Q_UP_MS = 13.5;
+const Q_DOWN_COOLDOWN = 2500, Q_UP_COOLDOWN = 9000;
 
 function applyQuality(tier) {
   const q = QUALITY[tier];
@@ -1010,9 +1039,9 @@ function frame(now) {
   frameEMA += ((dt * 1000) - frameEMA) * 0.06;
   if (!NO_POST && now > qHoldUntil) {
     if (frameEMA > Q_DOWN_MS && qTier < QUALITY.length - 1) {
-      applyQuality(qTier + 1); qHoldUntil = now + Q_COOLDOWN;
+      applyQuality(qTier + 1); qHoldUntil = now + Q_DOWN_COOLDOWN;
     } else if (frameEMA < Q_UP_MS && qTier > 0) {
-      applyQuality(qTier - 1); qHoldUntil = now + Q_COOLDOWN;
+      applyQuality(qTier - 1); qHoldUntil = now + Q_UP_COOLDOWN;
     }
   }
   updateHover();
@@ -1149,7 +1178,16 @@ function frame(now) {
     if (titleCard) titleCard.classList.add('show');
     breakBtn.classList.remove('hide');
   }
-  requestAnimationFrame(frame);
+  // A full pipeline warmup was tried here and removed. Rendering a handful of
+// real frames behind the loader does eliminate the remaining mid-journey
+// compiles — measured: the program count stops climbing entirely, sitting at
+// its final value from the very first stop. But even at 64x64 the resize of
+// the composer's render targets plus one scene render was heavy enough to stop
+// the page loading under a software rasteriser, and it is not something I can
+// verify on real hardware from here. Shipping an unverifiable stall in the
+// loading path is worse than the four compiles it saves.
+//
+requestAnimationFrame(frame);
 }
 step(96, 'Throwing the bolts');
 await paint();
