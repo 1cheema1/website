@@ -67,7 +67,7 @@ if (new URLSearchParams(location.search).get('debug') === '1') {
 // from before it existed — these look identical from the outside. BUILD is
 // bumped on every deploy that changes behaviour, so if the number here is not
 // the current one, the page is stale and nothing else it says can be trusted.
-const BUILD = '2026-08-16-mobile-2';
+const BUILD = '2026-08-16-rects-3';
 if (new URLSearchParams(location.search).get('diag') === '1') {
   // Attach immediately if the body already exists, and via the event if not.
   // main.js is a module with top-level await, so it can resume after
@@ -90,7 +90,27 @@ if (new URLSearchParams(location.search).get('diag') === '1') {
         'navMuted ' + getComputedStyle(document.documentElement)
           .getPropertyValue('--muted').trim() + '   (expect #6b6357)\n' +
         'dpr      ' + devicePixelRatio + '   coarse ' +
-          matchMedia('(pointer: coarse)').matches;
+          matchMedia('(pointer: coarse)').matches + '\n' +
+        (() => {
+          const T = window.__three; if (!T) return 'three    (not ready)';
+          const cv = T.renderer.domElement.getBoundingClientRect();
+          const cs = document.getElementById('css3d');
+          const cd = cs && cs.firstElementChild
+            ? cs.firstElementChild.getBoundingClientRect() : null;
+          const sz = T.renderer.getSize(new (T.renderer.domElement.constructor === Object
+            ? Object : Object)());
+          const it = T.panels && T.panels.items && T.panels.items.sheet;
+          const r = [];
+          r.push('canvas   ' + Math.round(cv.width) + ' x ' + Math.round(cv.height) +
+                 ' @ ' + Math.round(cv.left) + ',' + Math.round(cv.top));
+          r.push('css3dEl  ' + (cd ? Math.round(cd.width) + ' x ' + Math.round(cd.height) +
+                 ' @ ' + Math.round(cd.left) + ',' + Math.round(cd.top) : 'none'));
+          r.push('glCSSpx  ' + T.renderer.domElement.style.width + ' x ' +
+                 T.renderer.domElement.style.height + '   pr ' + T.renderer.getPixelRatio());
+          r.push('sheetScl ' + (it ? it.obj.scale.x.toFixed(6) : '?') +
+                 '   camAsp ' + T.camera.aspect.toFixed(3));
+          return r.join('\n');
+        })();
     };
     upd(); setInterval(upd, 1000);
     document.body.appendChild(d);
@@ -1458,4 +1478,4 @@ window.__goto = (target) => {
   if (travel) { travel.kill(); travel = null; }
   p = clamp01(target);
 };
-window.__three = { scene, camera, renderer, stops, world, panels };
+window.__three = { scene, camera, renderer, stops, world, panels, cssRenderer };
