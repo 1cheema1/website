@@ -197,7 +197,7 @@ console.log('\n── 6. intro beats are ordered ──');
 
 console.log('\n── 9b. each panel is visible at its own station ──');
 {
-  const AT = { sheet: 2, board: 4, spread: 6, card: 8, note: 9 };
+  const AT = { sheet: 1, board: 2, spread: 3, card: 4, note: 5 };
   for (const [k, idx] of Object.entries(AT)) {
     const st = C.STATIONS[idx], w = C.PANEL_WINDOW[k];
     if (!w) { bad(`no PANEL_WINDOW for ${k}`); continue; }
@@ -279,7 +279,14 @@ console.log('\n── 8. flank photo/sign ──');
     if (clash) { bad(`FLANK.${key} spans x[${l.toFixed(2)},${r.toFixed(2)}] — overlaps a facade pilaster at x[${clash[0].toFixed(2)},${clash[1].toFixed(2)}]`); continue; }
     if (tp > frameTop || b < frameBot) { bad(`FLANK.${key} y[${b.toFixed(2)},${tp.toFixed(2)}] is outside the wide-shot frame y[${frameBot.toFixed(2)},${frameTop.toFixed(2)}]`); continue; }
     if (r > halfW || l < -halfW) { bad(`FLANK.${key} x[${l.toFixed(2)},${r.toFixed(2)}] is outside the wide-shot frame x[±${halfW.toFixed(2)}] at 16:9`); continue; }
-    ok(`FLANK.${key} x[${l.toFixed(2)},${r.toFixed(2)}] y[${b.toFixed(2)},${tp.toFixed(2)}] — in frame, clear of door and pilasters`);
+    // "in frame" is not enough — the fixed header owns the top of the frame,
+    // and the sign's border was cutting through the nav links.
+    const navFloor = frameTop - C.NAV_SAFE * (2 * halfH);
+    if (tp > navFloor) {
+      bad(`FLANK.${key} top ${tp.toFixed(3)} intrudes into the header band (below ${navFloor.toFixed(3)})`);
+      continue;
+    }
+    ok(`FLANK.${key} x[${l.toFixed(2)},${r.toFixed(2)}] y[${b.toFixed(2)},${tp.toFixed(2)}] — in frame, clear of door, pilasters and header`);
   }
 }
 

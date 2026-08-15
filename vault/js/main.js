@@ -35,6 +35,11 @@ const step = (pct, msg) => {
     : `Aligning tumblers ${Math.min(6, want)} / 6`;
 };
 
+// Yield to the browser so the loader can actually paint between stages.
+// Without this every step() ran in one synchronous block and the tumblers
+// went straight from 0/6 to gone.
+const paint = () => new Promise(r => requestAnimationFrame(() => setTimeout(r, 0)));
+
 const clamp01 = v => v < 0 ? 0 : v > 1 ? 1 : v;
 const sstep = t => { t = clamp01(t); return t * t * t * (t * (t * 6 - 15) + 10); };
 const REDUCED_MOTION = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -78,6 +83,7 @@ const camera = new THREE.PerspectiveCamera(C.FOV, innerWidth / innerHeight, 0.05
 camera.position.set(0, 1.42, -2.10);
 
 step(12, 'Casting the room');
+await paint();
 
 // ═══════════════════ image-based lighting ═══════════════════
 {
@@ -89,9 +95,18 @@ step(12, 'Casting the room');
 }
 
 step(30, 'Milling the door');
-const world = buildWorld(scene);
+await paint();
+// the nightly market data, fetched before the world is built so the trading
+// floor can label its screens with the same real tickers the board reports
+let MARKET = null;
+try {
+  const r = await fetch('data/positions.json', { cache: 'no-cache' });
+  if (r.ok) MARKET = await r.json();
+} catch { /* board and screens fall back to baked-in values */ }
+const world = buildWorld(scene, MARKET);
 
 step(52, 'Forging the vault');
+await paint();
 const intro = buildIntro(scene, world.M, world.glowSprite, world.emis);
 
 // ═══════════════════ post-processing ═══════════════════
@@ -177,6 +192,7 @@ function computeStops() {
 computeStops();
 
 step(70, 'Setting the type');
+await paint();
 const panels = buildPanels(scene, cssScene, world.M, stops);
 panels.orient();
 
@@ -186,6 +202,7 @@ panels.orient();
 // brings ~10 new materials on screen within a few hundred milliseconds.
 // Paying it once, behind the loader, buys a smooth intro.
 step(86, 'Cutting the keyway');
+await paint();
 renderer.compile(scene, camera);
 
 // ═══════════════════ path curves ═══════════════════
@@ -391,13 +408,16 @@ let LOCKED = null;
     p = LOCKED;
     introDone = true;
     navLocked = false;
-    // headless capture tabs can throttle setTimeout hard enough that the
-    // loader's normal 220ms fade-out never fires in time for --screenshot;
-    // locked mode doesn't need the loading UX, so skip it outright.
-    document.getElementById('loader').classList.add('gone');
+    // headless capture tabs throttle hard enough that neither the fade-out
+    // timer nor the CSS opacity transition completes before --screenshot
+    // fires, leaving a half-faded loader over the frame. Locked mode doesn't
+    // need the loading UX at all, so take it out of the layer stack outright.
+    const _ld = document.getElementById('loader');
+    _ld.classList.add('gone');
+    _ld.style.display = 'none';
   }
   if (q.get('bare') === '1') {
-    for (const id of ['hud', 'chapters', 'scrollcue', 'topnav', 'skipIntro', 'cursor']) {
+    for (const id of ['hud', 'chapters', 'scrollcue', 'topnav', 'skipIntro', 'breakBtn', 'cursor']) {
       const e = document.getElementById(id); if (e) e.style.display = 'none';
     }
   }
@@ -407,6 +427,19 @@ let LOCKED = null;
 const skipBtn = document.getElementById('skipIntro');
 let introTimeline = null;
 let introStarted = false;
+let breakOffered = false;
+const breakBtn = document.getElementById('breakBtn');
+breakBtn.classList.add('hide');
+
+function startSmash() {
+  if (introStarted || !introTimeline) return;
+  introStarted = true;
+  breakBtn.classList.add('hide');
+  // this click IS the user gesture, so the AudioContext can finally start and
+  // the impact is actually audible
+  armAudio();
+  introTimeline.play();
+}
 function handoff() {
   introDone = true;
   navLocked = false;
@@ -417,10 +450,12 @@ function handoff() {
 
 if (LOCKED !== null) {
   skipBtn.style.display = 'none';
+  breakBtn.style.display = 'none';
   topnav.classList.add('show');
 } else if (REDUCED_MOTION) {
   p = C.INTRO_END;
   skipBtn.style.display = 'none';
+  breakBtn.style.display = 'none';
   handoff();
 } else {
   const introState = { p: 0 };
@@ -457,9 +492,17 @@ if (LOCKED !== null) {
   tl.call(() => AUDIO.coinCascade(C.INTRO_PACING.find(x => x.key === 'gather').dur, 16), null, beatTime(C.BEAT.gather[0]));
   tl.call(() => AUDIO.doorForge(), null, beatTime(C.BEAT.forge[0]));
 
+  breakBtn.addEventListener('click', startSmash);
+  // pressing a nav key with the bank still intact means "get on with it"
+  addEventListener('keydown', (e) => {
+    if (introStarted) return;
+    const k = e.key.toLowerCase();
+    if (k === 'w' || k === 's' || k === ' ' || k === 'arrowup' || k === 'arrowdown') startSmash();
+  });
   skipBtn.addEventListener('click', () => {
     tl.kill();
     p = C.INTRO_END;
+    breakBtn.classList.add('hide');
     handoff();
   });
 }
@@ -467,7 +510,7 @@ if (LOCKED !== null) {
 // ═══════════════════ header nav clicks ═══════════════════
 // Jump straight to a room's READING station (not its reveal), since someone
 // clicking "Positions" wants the board, not the doorway.
-const ROOM_STATION = { office: 2, trading: 4, study: 6, rooftop: 8 };
+const ROOM_STATION = { office: 1, trading: 2, study: 3, rooftop: 4 };
 navBtns.forEach(btn => {
   btn.addEventListener('click', () => {
     if (!introDone) return;
@@ -676,15 +719,15 @@ function frame(now) {
     if (age > 220) ld.classList.add('gone');
     if (age > 1150) { ld.style.display = 'none'; loaderDone = true; }
   }
-  // Only once the loader has cleared does the smash begin, so it is never
-  // performed behind the loading screen.
-  if (loaderDone && !introStarted && introTimeline) {
-    introStarted = true;
-    introTimeline.play();
+  // The smash waits for the visitor to press the button (see breakBtn).
+  if (loaderDone && !breakOffered && introTimeline) {
+    breakOffered = true;
+    breakBtn.classList.remove('hide');
   }
   requestAnimationFrame(frame);
 }
 step(96, 'Throwing the bolts');
+await paint();
 requestAnimationFrame(frame);
 
 // dev hook: jump to a timeline position from the console (post-handoff only)

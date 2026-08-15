@@ -168,6 +168,8 @@
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   border:2px solid rgba(201,162,39,.55);
   box-shadow:inset 0 0 46px rgba(201,162,39,.16);}
-#flank-sign .line1{font-family:var(--mono);font-size:34px;letter-spacing:.14em;font-weight:600;}
-#flank-sign .line2{font-family:var(--mono);font-size:20px;letter-spacing:.32em;margin-top:8px;
-  color:rgba(245,241,232,.82);}
+#flank-sign .line1{font-family:var(--mono);font-size:38px;letter-spacing:.14em;font-weight:600;}
+/* the sign is mounted smaller now (0.80 m) so it clears the header — the
+   subtitle has to carry more weight on screen than it did at 0.92 m */
+#flank-sign .line2{font-family:var(--mono);font-size:24px;letter-spacing:.30em;margin-top:10px;
+  color:rgba(245,241,232,.95);}

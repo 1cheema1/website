@@ -279,15 +279,16 @@ export function shadowBlobTexture(size = 128) {
 // One texture holding a GRID of independent charts. Screens then take a UV
 // sub-rect of it, which lets every screen in the room share one material and
 // merge into a single draw call while still showing different data.
-export function chartSheetTexture(cols = 3, rows = 2, cell = 512) {
+export function chartSheetTexture(cols = 3, rows = 2, cell = 1024, symbols = null) {
   const w = cols * cell, h = rows * cell;
   const c = document.createElement('canvas'); c.width = w; c.height = h;
   const g = c.getContext('2d');
   let seed = 1337;
   const rnd = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
 
-  const SYMS = ['ROBO', 'CFM101', 'T20WC', 'SUBTRK', 'ZARF', 'DBATE',
-    'USDPKR', 'SPX', 'TBILL', 'PIB', 'NOP', 'FWD'];
+  // real S&P 500 tickers from the nightly data run when available
+  const SYMS = (symbols && symbols.length) ? symbols
+    : ['AAPL', 'MSFT', 'NVDA', 'AMZN', 'META', 'AVGO', 'JPM', 'V', 'COST', 'AMD', 'ORCL', 'CRM'];
 
   for (let r = 0; r < rows; r++) {
     for (let col = 0; col < cols; col++) {
@@ -354,20 +355,27 @@ export function chartSheetTexture(cols = 3, rows = 2, cell = 512) {
   }
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
-  t.generateMipmaps = false;
-  t.minFilter = THREE.LinearFilter;
+  // These screens are ~100px tall on a 900px viewport, i.e. heavily minified
+  // from a 1024px cell. Without mipmaps that minification is what made them
+  // look soft and shimmery; mipmaps plus anisotropy is what makes a small
+  // screen read as a crisp panel rather than a smeared texture.
+  t.generateMipmaps = true;
+  t.minFilter = THREE.LinearMipmapLinearFilter;
+  t.magFilter = THREE.LinearFilter;
+  t.anisotropy = 16;
+  t.needsUpdate = true;
   return t;
 }
 
 // Long horizontal ticker crawl for the strip above the board.
-export function tickerTexture(w = 2048, h = 96) {
+export function tickerTexture(w = 4096, h = 160, symbols = null) {
   const c = document.createElement('canvas'); c.width = w; c.height = h;
   const g = c.getContext('2d');
   g.fillStyle = '#05070a'; g.fillRect(0, 0, w, h);
   let seed = 99;
   const rnd = () => { seed = (Math.imul(seed, 1103515245) + 12345) >>> 0; return seed / 4294967296; };
-  const SYMS = ['ROBOADVISOR', 'CFM101', 'T20WC', 'SUBTRACK', 'ZARF', 'DEBATELY',
-    'USDPKR', 'SPX', 'KSE100', 'TBILL 6M', 'PIB 10Y', 'GOLD'];
+  const SYMS = (symbols && symbols.length) ? symbols
+    : ['AAPL', 'MSFT', 'NVDA', 'AMZN', 'META', 'AVGO', 'JPM', 'V', 'COST', 'AMD', 'ORCL', 'CRM'];
   g.font = `500 ${Math.round(h * 0.44)}px 'JetBrains Mono', ui-monospace, monospace`;
   g.textBaseline = 'middle';
   let x = 20;
@@ -385,6 +393,10 @@ export function tickerTexture(w = 2048, h = 96) {
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   t.wrapS = THREE.RepeatWrapping;
+  t.generateMipmaps = true;
+  t.minFilter = THREE.LinearMipmapLinearFilter;
+  t.anisotropy = 16;
+  t.needsUpdate = true;
   return t;
 }
 

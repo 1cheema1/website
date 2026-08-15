@@ -67,8 +67,15 @@ export const STOP_OF = { office: 'sheet', trading: 'board', study: 'spread', roo
 // Vertical budget at the 'wide' stop (cam y=1.42, z=-4.40, fov 45): the frame
 // spans roughly y -0.40 .. 3.24 at the door plane, and the door top is 2.60 —
 // so the sign lives in the 2.60..3.24 band.
+// The top of the frame is not usable: the fixed header sits there. At 1440x900
+// the sign's gold border was drawing straight through "POSITIONS"/"RESEARCH".
+// The header is ~56 CSS px, which is a bigger *fraction* of a short viewport,
+// so NAV_SAFE reserves 9% of frame height rather than a fixed metre offset.
+// Budget above the door: mouth top 2.655 .. nav floor ~2.914 — 0.26 m. The
+// sign is sized and centred to sit inside that with a few mm either side.
+export const NAV_SAFE = 0.09;
 export const FLANK = {
-  sign: { el: [660, 200], w: 0.92, pos: [0, 2.92, -0.06] }
+  sign: { el: [660, 200], w: 0.80, pos: [0, 2.782, -0.06] }
 };
 FLANK.sign.h = FLANK.sign.w * FLANK.sign.el[1] / FLANK.sign.el[0];
 // 4-point crossfade in p-space: [inStart, inEnd, outStart, outEnd].
@@ -142,13 +149,9 @@ export const TIMELINE = [
 // that is what stops a gesture stranding you mid-corridor.
 export const STATIONS = [
   0.300,   // vault, door open
-  0.390,   // office — room reveal
   0.470,   // office — tear sheet
-  0.560,   // trading — room reveal
   0.640,   // trading — board
-  0.730,   // study — room reveal
   0.810,   // study — book
-  0.900,   // rooftop — room reveal
   0.955,   // rooftop — contact card
   1.000    // rooftop — message pad
 ];
@@ -225,11 +228,11 @@ export const BEAT = {
 // Ends on `bolts` — the door is built and unlocked but closed. BEAT.swing is
 // deliberately NOT in this list; it belongs to the visitor.
 export const INTRO_PACING = [
-  { key: 'windup', dur: 0.95, ease: 'power2.in' },
-  { key: 'strike', dur: 0.13, ease: 'power4.in' },
-  { key: 'fall',   dur: 0.62, ease: 'power1.out' },    // covers burst+fall
-  { key: 'gather', dur: 0.85, ease: 'power2.inOut' },
-  { key: 'dial',   dur: 0.55, ease: 'power1.inOut' },  // covers forge+dial
-  { key: 'bolts',  dur: 0.42, ease: 'power1.inOut', to: INTRO_END }
+  { key: 'windup', dur: 1.15, ease: 'power2.in' },
+  { key: 'strike', dur: 0.26, ease: 'power3.in' },
+  { key: 'fall',   dur: 1.45, ease: 'power1.out' },    // covers burst+fall
+  { key: 'gather', dur: 1.55, ease: 'power2.inOut' },
+  { key: 'dial',   dur: 0.95, ease: 'power1.inOut' },  // covers forge+dial
+  { key: 'bolts',  dur: 0.70, ease: 'power1.inOut', to: INTRO_END }
 ];
 export const INTRO_HANDOFF_PAUSE = 0.5;   // real seconds held before input unlocks

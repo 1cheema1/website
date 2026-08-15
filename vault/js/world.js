@@ -32,7 +32,9 @@ function jamb(g, mat, z, door, depth = 0.4) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-export function buildWorld(scene) {
+export function buildWorld(scene, market = null) {
+  // `market` is the nightly positions.json when available, so the trading
+  // floor shows the same real S&P names the board's numbers came from
   const root = new THREE.Group();
   scene.add(root);
   const anim = [];
@@ -284,29 +286,6 @@ export function buildWorld(scene) {
       const gl = new THREE.PointLight(0x5a8fd0, 1.6, 1.6, 2); gl.position.set(0, 0.44, 0.14); G2.add(gl);
     }
 
-    // framed photo standing on the desk — real geometry rather than a CSS3D
-    // panel so the room's own lamp light actually falls across it
-    {
-      const F = new THREE.Group();
-      at(F, 0.40, deskTop, 4.05);
-      F.rotation.y = -0.34;                      // angled toward the reader
-      const tilt = -0.24;                        // leans back on its easel
-      const fw = 0.125, fh = 0.155;
-      const cy = fh / 2 + 0.004;
-      F.add(sc(at(B(fw, fh, 0.014, M.walnut), 0, cy, 0, tilt)));
-      F.add(sc(at(B(fw - 0.018, fh - 0.018, 0.005, M.black), 0, cy, -0.008, tilt)));
-      const photoTex = new THREE.TextureLoader().load('img/photo.jpg');
-      photoTex.colorSpace = THREE.SRGBColorSpace;
-      const face = new THREE.Mesh(new THREE.PlaneGeometry(fw - 0.024, fh - 0.024),
-        new THREE.MeshStandardMaterial({ map: photoTex, roughness: 0.44, metalness: 0, envMapIntensity: 0.6 }));
-      // rotated PI about Y so its front faces -z toward the reader, the same
-      // convention every other flat surface in this scene uses
-      at(face, 0, cy, -0.012, tilt, Math.PI, 0);
-      F.add(face);
-      F.add(sc(at(B(0.013, 0.090, 0.011, M.walnut), 0, fh * 0.30, 0.032, 0.52)));
-      office.add(F);
-    }
-
     // desk clutter — composed for the reading frame, not scattered
     const porcelain = new THREE.MeshStandardMaterial({ color: 0xe8e4da, roughness: 0.22, metalness: 0.02, envMapIntensity: 0.9 });
     office.add(sc(at(CY(0.037, 0.032, 0.078, porcelain, 20), 0.338, deskTop + 0.040, 4.040)));
@@ -437,7 +416,8 @@ export function buildWorld(scene) {
     // rather than a poster on an empty office wall. All the screens share ONE
     // chart-sheet texture via UV sub-rects and merge into a single draw call.
     {
-      const sheetTex = TEX.chartSheetTexture(3, 2, 512);
+      const tickers = (market && market.holdings) ? market.holdings : null;
+      const sheetTex = TEX.chartSheetTexture(3, 2, 1024, tickers);
       const screenMat = new THREE.MeshBasicMaterial({ map: sheetTex, toneMapped: false, fog: true });
       const COLS = 3, ROWS = 2;
       const screenGeos = [];
@@ -486,7 +466,7 @@ export function buildWorld(scene) {
       trading.add(sc(at(B(3.0, 0.04, 0.50, M.concrete2), 0, 0.76, 15.66)));
 
       // ticker crawl directly above the board
-      const tick = TEX.tickerTexture();
+      const tick = TEX.tickerTexture(4096, 160, tickers);
       tick.repeat.set(3.1, 1);
       const tickMat = new THREE.MeshBasicMaterial({ map: tick, toneMapped: false });
       const tickMesh = at(new THREE.Mesh(new THREE.PlaneGeometry(3.4, 0.15), tickMat), 0, 2.60, 15.86, 0, Math.PI, 0);
