@@ -67,7 +67,7 @@ if (new URLSearchParams(location.search).get('debug') === '1') {
 // from before it existed — these look identical from the outside. BUILD is
 // bumped on every deploy that changes behaviour, so if the number here is not
 // the current one, the page is stale and nothing else it says can be trusted.
-const BUILD = '2026-08-16-portraitfit-16';
+const BUILD = '2026-08-16-desktoponphone-17';
 if (new URLSearchParams(location.search).get('diag') === '1') {
   // Attach immediately if the body already exists, and via the event if not.
   // main.js is a module with top-level await, so it can resume after

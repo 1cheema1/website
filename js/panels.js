@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { CSS3DObject } from '../lib/CSS3DRenderer.js';
-import { CARRIER, carriersFor, FLANK, FLANK_WINDOW, PANEL_WINDOW, RESUME, SCREEN, SCREEN_WINDOW } from './config.js';
+import { CARRIER, carriersFor, usesPortraitCss, FLANK, FLANK_WINDOW, PANEL_WINDOW, RESUME, SCREEN, SCREEN_WINDOW } from './config.js';
 import { buildScreenElements } from './screens.js';
 
 const clamp01 = v => v < 0 ? 0 : v > 1 ? 1 : v;
@@ -72,10 +72,15 @@ function holeMaterial() {
 //
 // Runs before computeStops() and before buildPanels(), because both read c.h.
 export function preparePanels() {
-  const CARR = carriersFor(innerWidth / innerHeight);
-  const portrait = CARR !== CARRIER;
-  document.body.classList.toggle('portrait', portrait);
-  if (!portrait) return CARR;
+  const aspect = innerWidth / innerHeight;
+  const CARR = carriersFor(aspect);
+  // Only the reflowed ?reflow=1 fallback gets the portrait stylesheet and the
+  // measure-and-grow pass. The default phone build renders the desktop rules at
+  // the desktop element sizes, where the content already fits — measured, and
+  // the reason it fits is that those boxes are what the copy was written for.
+  const reflow = usesPortraitCss(aspect);
+  document.body.classList.toggle('portrait', reflow);
+  if (!reflow) return CARR;
 
   for (const key of Object.keys(CARR)) {
     const c = CARR[key];
@@ -112,8 +117,8 @@ export function buildPanels(scene, cssScene, M, stops, market) {
   // SCALE applied to a still-landscape element, so the panel rendered half as
   // wide again as its own hole punch and hung off it.
   const CARR = carriersFor(innerWidth / innerHeight);
-  const portrait = CARR !== CARRIER;
-  document.body.classList.toggle('portrait', portrait);
+  const reflow = usesPortraitCss(innerWidth / innerHeight);
+  document.body.classList.toggle('portrait', reflow);
 
   // ── portrait reads the panels FLAT ────────────────────────────
   // On a phone the panels stop being projected into the scene and become plain
@@ -228,18 +233,18 @@ export function buildPanels(scene, cssScene, M, stops, market) {
   // to stay legible, and anything drawn into the WebGL canvas is resampled
   // by the DPR cap before it reaches a retina display.
   //
-  // Landscape only. The portrait board is 2.6m tall against the landscape
-  // board's 1.47 — tall enough that its rectangle CONTAINS the console
+  // Off in the ?reflow=1 fallback only. That build's board is 2.6m tall against
+  // this one's 1.47 — tall enough that its rectangle CONTAINS the console
   // screens at y=0.96 and the ticker at y=2.60. Hole punches deliberately do
   // not depth-test (see holeMaterial), so a screen behind the board still cuts
   // its rectangle out of the board's own HTML and paints itself over the
-  // project list. That is the two chart cards sitting across the middle of the
-  // Projects panel, and the ticker prices bleeding through its top edge.
+  // project list: two chart cards across the middle of the Projects panel, and
+  // ticker prices bleeding through its top edge.
   //
-  // Dropping them also removes nine CSS3D elements and nine holes from the
-  // phone's frame budget, on the one device that cannot spare them.
+  // The default phone build uses the desktop board, which sits clear of both,
+  // so the wall comes back — it is most of what makes that room a trading floor.
   const screens = {};
-  if (!portrait) {
+  if (!reflow) {
     const els = buildScreenElements(market);
     for (const key of Object.keys(SCREEN)) {
       const c = SCREEN[key];

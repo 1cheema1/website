@@ -95,11 +95,46 @@ export const CARRIER_PORTRAIT = {
   note:   carrier({ room: 'note',    el: [840, 1120], w: 0.30, pos: [0, 0.7915, 26.74], elev: 70 * D, fitH: 0.82, fitW: 0.89, bias: 0.05 })
 };
 
+// ── what a phone actually gets ────────────────────────────────────
+// The DESKTOP layout, scaled down. Same element boxes, same CSS, same design —
+// only the framing fractions differ, because a 392px-wide screen needs its own
+// answer to "how much of the frame does this fill". CARRIER itself is not
+// touched, and neither is anything that reads it on a wide screen; el and pos
+// are copied, not shared, so nothing here can ever write back into it.
+//
+// This replaces the reflowed portrait panels as the default. Those turned each
+// panel into a single tall column — legible, but not the site. The trading
+// board stopped being a board, the book stopped being a spread. Keeping the
+// composition matters more than the point size it costs, which is the call the
+// owner of this site made. CARRIER_PORTRAIT is still reachable at ?reflow=1.
+//
+// A useful second-order effect: portrait and landscape now resolve to the SAME
+// element boxes, so the paper props behind the panels no longer depend on which
+// way the phone was held at load. Rotating mid-visit used to leave every prop
+// at the old aspect; now resize() recomputes the camera distance and that is
+// the whole job. Turning the phone sideways is the readable way to view this.
+const phone = (c, fit) => carrier({
+  room: c.room, el: [c.el[0], c.el[1]], w: c.w, pos: [...c.pos], elev: c.elev, ...fit
+});
+export const CARRIER_PHONE = {
+  sheet:  phone(CARRIER.sheet,  { fitH: 0.48, fitW: 0.95, bias: 0.09 }),
+  board:  phone(CARRIER.board,  { fitH: 0.70, fitW: 0.95, bias: 0.09 }),
+  spread: phone(CARRIER.spread, { fitH: 0.70, fitW: 0.95, bias: 0.09 }),
+  card:   phone(CARRIER.card,   { fitH: 0.70, fitW: 0.95, bias: 0.09 }),
+  note:   phone(CARRIER.note,   { fitH: 0.70, fitW: 0.95, bias: 0.09 })
+};
+
 // Portrait below 1:1. Tablets in landscape keep the wide panels.
 export const IS_PORTRAIT = (aspect) => aspect < 1.0;
+const REFLOW = typeof location !== 'undefined' &&
+  new URLSearchParams(location.search).get('reflow') === '1';
 export function carriersFor(aspect) {
-  return IS_PORTRAIT(aspect) ? CARRIER_PORTRAIT : CARRIER;
+  if (!IS_PORTRAIT(aspect)) return CARRIER;
+  return REFLOW ? CARRIER_PORTRAIT : CARRIER_PHONE;
 }
+// Whether the reflowed single-column CSS applies. Only the ?reflow=1 fallback
+// gets it — the default phone build renders the desktop rules verbatim.
+export function usesPortraitCss(aspect) { return IS_PORTRAIT(aspect) && REFLOW; }
 
 export const STOP_OF = { office: 'sheet', trading: 'board', study: 'spread', rooftop: 'card', note: 'note' };
 
