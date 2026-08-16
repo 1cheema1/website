@@ -67,7 +67,7 @@ if (new URLSearchParams(location.search).get('debug') === '1') {
 // from before it existed — these look identical from the outside. BUILD is
 // bumped on every deploy that changes behaviour, so if the number here is not
 // the current one, the page is stale and nothing else it says can be trusted.
-const BUILD = '2026-08-16-flat-default-12';
+const BUILD = '2026-08-16-inapp-13';
 if (new URLSearchParams(location.search).get('diag') === '1') {
   // Attach immediately if the body already exists, and via the event if not.
   // main.js is a module with top-level await, so it can resume after
@@ -93,7 +93,10 @@ if (new URLSearchParams(location.search).get('diag') === '1') {
         'dpr      ' + devicePixelRatio + '   coarse ' +
           matchMedia('(pointer: coarse)').matches + '\n' +
         'flatMode ' + (window.__three && window.__three.panels
-          ? window.__three.panels.flat : '?') + '   (expect true on a phone)\n' +
+          ? window.__three.panels.flat : '?') +
+          '   inApp ' + (/FBAN|FBAV|FB_IAB|Instagram|Line\/|Twitter|MicroMessenger|Snapchat|LinkedInApp|Pinterest|GSA\//i.test(navigator.userAgent) ||
+            (/iPhone|iPad|iPod/.test(navigator.userAgent) && /AppleWebKit/.test(navigator.userAgent) &&
+             !/Safari\//.test(navigator.userAgent) && !/CriOS|FxiOS|EdgiOS/.test(navigator.userAgent))) + '\n' +
         (() => {
           const T = window.__three; if (!T) return 'three    (not ready)';
           const cv = T.renderer.domElement.getBoundingClientRect();
