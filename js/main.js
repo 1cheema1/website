@@ -67,7 +67,7 @@ if (new URLSearchParams(location.search).get('debug') === '1') {
 // from before it existed — these look identical from the outside. BUILD is
 // bumped on every deploy that changes behaviour, so if the number here is not
 // the current one, the page is stale and nothing else it says can be trusted.
-const BUILD = '2026-08-16-flat-all-14';
+const BUILD = '2026-08-16-evenpx-15';
 if (new URLSearchParams(location.search).get('diag') === '1') {
   // Attach immediately if the body already exists, and via the event if not.
   // main.js is a module with top-level await, so it can resume after
@@ -977,13 +977,30 @@ let qHoldUntil = 0;
 const Q_DOWN_MS = 27, Q_UP_MS = 13.5;
 const Q_DOWN_COOLDOWN = 2500, Q_UP_COOLDOWN = 9000;
 
+// A fractional drawing buffer is the other half of #19854: at DPR 1.15 a 393px
+// viewport asks for 451.95 device pixels, three.js floors it, and the CSS layer
+// and the canvas no longer agree about where a pixel is. Snap to the nearest
+// ratio that lands both axes on whole device pixels.
+function integralRatio(want, w, h) {
+  const cands = [want, 3, 2.5, 2, 1.5, 1.25, 1].filter(r => r > 0 && r <= want + 0.001)
+                  .sort((a, b) => b - a);
+  const whole = (v) => Math.abs(v - Math.round(v)) < 1e-6;
+  // even device pixels on both axes first — the reported failure is tied to odd
+  // resolutions, so leave nothing odd anywhere in the chain
+  for (const r of cands) {
+    if (whole(w * r) && whole(h * r) && Math.round(w * r) % 2 === 0 && Math.round(h * r) % 2 === 0) return r;
+  }
+  for (const r of cands) if (whole(w * r) && whole(h * r)) return r;
+  return 1;
+}
+
 function applyQuality(tier) {
   const q = QUALITY[tier];
   qTier = tier;
   const want = Math.min(devicePixelRatio, q.dpr);
   if (Math.abs(renderer.getPixelRatio() - want) > 0.01) {
     const { w, h } = viewportSize();
-    renderer.setPixelRatio(want);
+    renderer.setPixelRatio(integralRatio(want, w, h));
     renderer.setSize(w, h);
     composer.setSize(w, h);
     if (bloomPass) bloomPass.setSize(w / 2, h / 2);
@@ -1014,7 +1031,7 @@ function setIntroCheap(on, wantBokeh) {
     const want = on ? 1.0 : Math.min(devicePixelRatio, QUALITY[qTier].dpr);
     if (Math.abs(renderer.getPixelRatio() - want) > 0.01) {
       const { w, h } = viewportSize();
-      renderer.setPixelRatio(want);
+      renderer.setPixelRatio(integralRatio(want, w, h));
       renderer.setSize(w, h);
       composer.setSize(w, h);
       if (bloomPass) bloomPass.setSize(w / 2, h / 2);
@@ -1224,10 +1241,21 @@ function viewportSize() {
   // actually on screen and everything sits slightly too low. visualViewport is
   // the only measurement that tracks the bar.
   const vv = window.visualViewport;
-  if (vv && vv.width > 0) return { w: Math.max(1, vv.width), h: Math.max(1, vv.height) };
-  const el = renderer.domElement.parentElement;
-  return { w: Math.max(1, (el && el.clientWidth) || innerWidth),
-           h: Math.max(1, (el && el.clientHeight) || innerHeight) };
+  let w, h;
+  if (vv && vv.width > 0) { w = vv.width; h = vv.height; }
+  else {
+    const el = renderer.domElement.parentElement;
+    w = (el && el.clientWidth) || innerWidth;
+    h = (el && el.clientHeight) || innerHeight;
+  }
+  // EVEN, and integral. three.js issue #19854 — "CSS3DRenderer offset for
+  // Safari on High DPI displays with odd resolution" — is this exact symptom:
+  // the CSS layer drifts from the WebGL layer on iOS at high DPI when the
+  // viewport has odd dimensions, and it is worst at shallow viewing angles,
+  // which is what the tear sheet is at 72 degrees. This device is 393x695:
+  // both odd, at dpr 3. Rounding down to even costs at most a pixel and is the
+  // reported workaround.
+  return { w: Math.max(2, Math.floor(w / 2) * 2), h: Math.max(2, Math.floor(h / 2) * 2) };
 }
 if (window.visualViewport) {
   // resize AND scroll: the bar collapses on scroll without firing resize

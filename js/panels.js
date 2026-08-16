@@ -90,7 +90,7 @@ export function buildPanels(scene, cssScene, M, stops, market) {
   // I keep failing to reach. ?proj=1 forces the projected panels for anyone who
   // wants to pick the projection back up with a debugger attached.
   const q = new URLSearchParams(location.search);
-  const FLAT = q.get('flat') === '1' || (portrait && q.get('proj') !== '1');
+  const FLAT = q.get('flat') === '1';
   const items = {};
   const holeScene = new THREE.Scene();
 
