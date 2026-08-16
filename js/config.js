@@ -57,12 +57,42 @@ export const CARRIER = {
 // behind each panel are built from these dimensions. Rotating a phone
 // mid-visit leaves the prop at the old aspect; the panel itself still frames
 // correctly, which is the part that carries the content.
+// el[1] here is a MINIMUM, not the height. preparePanels() in panels.js
+// measures each panel's real content and grows the box to fit it, because a
+// hand-authored height is a guess and every one of these guesses was low — the
+// Experience sheet's copy ran 637px past an 1180px box, the board's 707px past
+// 1160, and the excess rendered outside the hole punch where the canvas paints
+// over it. That is the text cut off at the bottom of every long panel.
+//
+// el[0] is wider than the phone-shaped values it replaces (760 -> 820/860)
+// even though the screen did not get wider. The panel is scaled to fit either
+// way, so what a wider source box actually buys is FEWER WRAPPED LINES per
+// bullet and a smaller share of the box spent on padding and fixed-height
+// headers. Both are pure profit: measured on a 392x694 phone, the Experience
+// bullets came back from 8.6 effective pixels to 11.1 for the same words.
+// Line length is the thing being tuned here, not width.
+//
+// bias pushes the panel down the frame as a fraction of frame height. The top
+// nav owns the first ~68px of a 694px phone viewport, so a panel centred in
+// the viewport had to stay under fitH 0.80 to clear it, while the bottom of
+// the screen sat empty. Aiming a little above the carrier drops the panel
+// clear of the nav and buys that space back — fitH 0.85 instead of 0.80.
+//
+// fitW/fitH stop short of 1.0 on purpose. The camera has a slow idle sway, and
+// a panel seen a few degrees off-square projects a bigger bounding box than
+// the head-on arithmetic predicts — at fitW 0.96 the tear sheet measured 1.014
+// of the viewport width, i.e. its left edge 8px off the screen. The margin is
+// for the sway, not decoration.
+//
+// The tear sheet and the message pad lie almost flat (72 and 70 degrees), so
+// they keystone hardest under bias — ~6% wider than nominal — and get their
+// own tighter fitW.
 export const CARRIER_PORTRAIT = {
-  sheet:  carrier({ room: 'office',  el: [760, 1180], w: 0.42, pos: [0, 0.8137, 4.26], elev: 72 * D, fitH: 0.80, fitW: 0.90 }),
-  board:  carrier({ room: 'trading', el: [820, 1160], w: 1.85, pos: [0, 1.7500, 15.83], elev: 0 * D, fitH: 0.78, fitW: 0.90 }),
-  spread: carrier({ room: 'study',   el: [780, 1140], w: 0.38, pos: [0, 1.0010, 20.15], elev: 33.7 * D, fitH: 0.78, fitW: 0.90 }),
-  card:   carrier({ room: 'rooftop', el: [800, 1120], w: 0.36, pos: [0, 0.8673, 27.10], elev: 12 * D, fitH: 0.74, fitW: 0.90 }),
-  note:   carrier({ room: 'note',    el: [760, 1060], w: 0.30, pos: [0, 0.7915, 26.74], elev: 70 * D, fitH: 0.72, fitW: 0.90 })
+  sheet:  carrier({ room: 'office',  el: [820, 1160], w: 0.42, pos: [0, 0.8137, 4.26], elev: 72 * D, fitH: 0.85, fitW: 0.88, bias: 0.04 }),
+  board:  carrier({ room: 'trading', el: [840, 1180], w: 1.85, pos: [0, 1.7500, 15.83], elev: 0 * D, fitH: 0.85, fitW: 0.92, bias: 0.05 }),
+  spread: carrier({ room: 'study',   el: [860, 1260], w: 0.38, pos: [0, 1.0010, 20.15], elev: 33.7 * D, fitH: 0.85, fitW: 0.92, bias: 0.05 }),
+  card:   carrier({ room: 'rooftop', el: [880, 1080], w: 0.36, pos: [0, 0.8673, 27.10], elev: 12 * D, fitH: 0.82, fitW: 0.92, bias: 0.05 }),
+  note:   carrier({ room: 'note',    el: [840, 1120], w: 0.30, pos: [0, 0.7915, 26.74], elev: 70 * D, fitH: 0.82, fitW: 0.89, bias: 0.05 })
 };
 
 // Portrait below 1:1. Tablets in landscape keep the wide panels.

@@ -360,53 +360,83 @@
    projected — a media query on the viewport still applies to it, but the
    result is scaled by however much of the screen the panel occupies. */
 
-  /* 1 · tear sheet */
-body.portrait #sheet{padding:44px 46px;}
-body.portrait #sheet .hdr{flex-direction:column;gap:20px;}
-body.portrait #sheet h1{font-size:64px;}
-body.portrait #sheet .sub{font-size:21px;}
-body.portrait #sheet .avail{font-size:19px;padding:9px 14px;}
-body.portrait #sheet .ph{width:110px;height:136px;}
-body.portrait #sheet .doc{text-align:left;font-size:17px;}
-body.portrait #sheet .doc b{font-size:26px;}
-body.portrait #sheet .body{grid-template-columns:1fr;gap:22px;margin-top:24px;padding-bottom:64px;}
-body.portrait #sheet .rt em{font-size:34px;}
-body.portrait #sheet .rt span,body.portrait #sheet .rr{font-size:17px;}
-body.portrait #sheet li{font-size:27px;line-height:1.36;margin-bottom:9px;padding-left:22px;}
-body.portrait #sheet li:before{top:15px;width:11px;}
-body.portrait #sheet .foot{font-size:17px;left:46px;right:46px;bottom:20px;}
+  /* 1 · tear sheet — 860 wide.
+     Eight bullets of real résumé copy is the densest thing on the site, and
+     the line length is what decides whether it fits: at 760px and 27px type
+     each bullet wrapped to three lines, and the four roles together ran 637px
+     past the box. Wider box, slightly smaller type, tighter leading — same
+     words, two lines a bullet. */
+body.portrait #sheet{padding:32px 38px;}
+body.portrait #sheet .hdr{flex-direction:column;gap:14px;padding-bottom:10px;}
+body.portrait #sheet h1{font-size:54px;}
+body.portrait #sheet .sub{font-size:18px;margin-top:5px;}
+body.portrait #sheet .avail{font-size:16px;padding:7px 12px;margin-top:7px;}
+body.portrait #sheet .ph{width:92px;height:114px;}
+body.portrait #sheet .doc{text-align:left;font-size:15px;line-height:1.7;}
+body.portrait #sheet .doc b{font-size:22px;}
+body.portrait #sheet .body{grid-template-columns:1fr;gap:15px;margin-top:16px;padding-bottom:44px;}
+body.portrait #sheet .rt{padding-bottom:3px;}
+body.portrait #sheet .rt em{font-size:27px;}
+body.portrait #sheet .rt span,body.portrait #sheet .rr{font-size:15px;}
+body.portrait #sheet .rr{margin:4px 0 5px;}
+body.portrait #sheet li{font-size:25px;line-height:1.31;margin-bottom:6px;padding-left:19px;}
+body.portrait #sheet li:before{top:14px;width:10px;}
+body.portrait #sheet .foot{font-size:15px;left:38px;right:38px;bottom:14px;}
 
-  /* 2 · projects board */
-body.portrait #board{padding:44px 44px;}
-body.portrait #board h2{font-size:56px;}
-body.portrait #board .r{font-size:17px;}
+  /* 2 · projects board — 940 wide */
+body.portrait #board{padding:30px 34px;}
+body.portrait #board h2{font-size:46px;}
+body.portrait #board .r{font-size:16px;}
+body.portrait #board .bh{padding-bottom:8px;}
   /* the table becomes stacked records: a 4-column grid cannot survive here */
 body.portrait #board thead{display:none;}
 body.portrait #board table,body.portrait #board tbody,body.portrait #board tr,body.portrait #board td{display:block;width:100%;}
-body.portrait #board tr.pos-row{padding:20px 0;border-bottom:1px solid rgba(255,255,255,.08);}
-body.portrait #board td{padding:2px 0;border:none;}
-body.portrait #board td.sym{font-size:38px;}
-body.portrait #board td.desc{font-size:30px;line-height:1.38;margin-top:10px;}
-body.portrait #board td.stack{font-size:21px;margin-top:10px;}
-body.portrait #board td.n{text-align:left;font-size:28px;margin-top:12px;}
-body.portrait #board .bf{font-size:16px;flex-wrap:wrap;gap:8px 18px;}
+  /* Ticker and source share the top line of each record rather than costing a
+     row apiece — six projects x one saved line is most of what made this panel
+     707px too tall. The source is absolutely positioned because <td> as a
+     flex/float child of a display:block <tr> is not reliable across engines. */
+body.portrait #board tr.pos-row{position:relative;padding:15px 0;border-bottom:1px solid rgba(255,255,255,.08);}
+body.portrait #board td{padding:0;border:none;}
+body.portrait #board td.sym{font-size:31px;padding-right:150px;}
+body.portrait #board td.desc{font-size:27px;line-height:1.33;margin-top:8px;}
+body.portrait #board td.stack{font-size:18px;margin-top:6px;}
+body.portrait #board td.n{position:absolute;right:0;top:15px;width:auto;
+  text-align:right;font-size:22px;margin:0;}
+body.portrait #board .bf{font-size:15px;flex-wrap:wrap;gap:6px 16px;}
 
-  /* 3 · the book — two facing pages become one column */
+  /* 3 · the book — two facing pages become one column, 860 wide */
 body.portrait #spread{flex-direction:column;}
 body.portrait #spread .gutter{display:none;}
-body.portrait #spread .pg{padding:40px 42px 20px;}
-body.portrait #spread .pg.r{padding-top:8px;}
+body.portrait #spread .pg{padding:32px 38px 14px;}
+body.portrait #spread .pg.r{padding-top:6px;}
 body.portrait #spread .pg.l,body.portrait #spread .pg.r{box-shadow:none;}
-body.portrait #spread h3{font-size:19px;margin:22px 0 12px;}
-body.portrait #spread .hold em{font-size:34px;}
-body.portrait #spread .hold span{font-size:19px;}
-body.portrait #spread .alloc .tk{font-size:32px;width:150px;}
-body.portrait #spread .alloc .nm{font-size:17px;}
-body.portrait #spread .alloc .pf{font-size:23px;width:130px;}
-body.portrait #spread .disc{font-size:15px;}
-body.portrait #spread .prob em{font-size:31px;}
-body.portrait #spread .prob span{font-size:22px;line-height:1.4;}
-body.portrait #spread .pn{font-size:16px;}
+body.portrait #spread h3{font-size:18px;margin:18px 0 10px;}
+body.portrait #spread h3:first-child{margin-top:0;}
+body.portrait #spread .hold{margin-bottom:9px;}
+body.portrait #spread .hold em{font-size:31px;}
+body.portrait #spread .hold span{font-size:18px;}
+body.portrait #spread .alloc td{padding:7px 0;}
+body.portrait #spread .alloc .tk{font-size:29px;width:165px;}
+body.portrait #spread .alloc .nm{font-size:16px;}
+body.portrait #spread .alloc .pf{font-size:22px;width:135px;}
+body.portrait #spread .disc{font-size:14px;}
+body.portrait #spread .prob{margin-bottom:11px;}
+body.portrait #spread .prob em{font-size:28px;}
+body.portrait #spread .prob span{font-size:26px;line-height:1.36;}
+  /* Stacked, each page's folio is pinned to the bottom of ITS OWN page, so the
+     left one landed in the MIDDLE of the panel — it was printing
+     "The Book · 03 / 04" across the allocation table.
+     Dropping .pg's positioning context lets the section marker resolve against
+     the whole panel instead, which puts it where every other panel keeps its
+     footer: pinned bottom-left. The right page's "Waterloo, ON" goes, because
+     the section number is the one that has to survive — it is the only thing
+     telling you this is 03 of 04. */
+body.portrait #spread .pg{position:static;}
+body.portrait #spread .pg.r{padding-bottom:54px;}
+body.portrait #spread .pg.r .pn{display:none;}
+body.portrait #spread .pg.l .pn{left:38px;bottom:16px;font-size:15px;}
+  /* the dash sits on the first line's x-height; it has to move with the type */
+body.portrait #spread .prob span:before{top:15px;width:10px;}
 
   /* 4 · contact card */
 body.portrait #card{padding:52px 50px;}

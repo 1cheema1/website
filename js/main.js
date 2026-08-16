@@ -9,7 +9,7 @@ import { BokehPass } from '../lib/BokehPass.js';
 import * as C from './config.js';
 import { buildWorld } from './world.js';
 import { buildIntro } from './intro.js';
-import { buildPanels } from './panels.js';
+import { buildPanels, preparePanels } from './panels.js';
 import * as AUDIO from './audio.js';
 
 const gsap = window.gsap;
@@ -67,7 +67,7 @@ if (new URLSearchParams(location.search).get('debug') === '1') {
 // from before it existed — these look identical from the outside. BUILD is
 // bumped on every deploy that changes behaviour, so if the number here is not
 // the current one, the page is stale and nothing else it says can be trusted.
-const BUILD = '2026-08-16-evenpx-15';
+const BUILD = '2026-08-16-portraitfit-16';
 if (new URLSearchParams(location.search).get('diag') === '1') {
   // Attach immediately if the body already exists, and via the event if not.
   // main.js is a module with top-level await, so it can resume after
@@ -376,7 +376,19 @@ function computeStops() {
     const d = C.fitDistance(c, aspect);
     const tgt = new THREE.Vector3().fromArray(c.pos);
     const dir = new THREE.Vector3(0, Math.sin(c.elev), -Math.cos(c.elev));
-    stops[key] = { pos: tgt.clone().addScaledVector(dir, d), tgt };
+    const pos = tgt.clone().addScaledVector(dir, d);
+    // `bias` slides the framing DOWN the screen without tilting it: both the
+    // eye and the target move together along the in-plane up axis, which is a
+    // pure translation of the frame, so the panel stays square-on. Used on
+    // phones to drop the panel clear of the fixed top nav — see
+    // CARRIER_PORTRAIT. `u` is perpendicular to `dir` inside the YZ plane.
+    if (c.bias) {
+      const u = new THREE.Vector3(0, Math.cos(c.elev), Math.sin(c.elev));
+      const frameH = 2 * Math.tan((C.FOV * Math.PI / 180) / 2) * d;
+      const off = c.bias * frameH;
+      pos.addScaledVector(u, off); tgt.addScaledVector(u, off);
+    }
+    stops[key] = { pos, tgt };
     stops[c.room] = stops[key];
   }
   // The résumé desk, framed by the same rule even though it is off the
@@ -389,9 +401,19 @@ function computeStops() {
     stops.resume = { pos: tgt.clone().addScaledVector(dir, d), tgt };
   }
 }
+// Panel boxes are measured, and every measurement here depends on the webfont
+// being the one that ends up on screen. `display:swap` lays the first pass out
+// in the fallback face and swaps the real one in later; measuring in between
+// bakes a wrong height into the panel boxes for the rest of the session. The
+// race caps the wait — a font that never arrives must not hold the site.
+step(66, 'Setting the type');
+await paint();
+await Promise.race([document.fonts.ready, new Promise(r => setTimeout(r, 2500))]);
+preparePanels();
+
 computeStops();
 
-step(70, 'Setting the type');
+step(70, 'Squaring the paper');
 await paint();
 const panels = buildPanels(scene, cssScene, world.M, stops, MARKET);
 panels.orient();

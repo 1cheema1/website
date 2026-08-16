@@ -193,12 +193,22 @@ body.has-cursor,body.has-cursor *{cursor:none !important;}
    that is what the bottom is now: one full-width button, with skip as a quiet
    line beneath it, and the decorative chrome removed rather than shuffled. */
 @media (max-width: 720px){
-  #topnav{padding:12px 14px;}
+  /* The bar measured 76px tall of a 694px viewport, and every panel has to be
+     framed BELOW it — 11% of the screen, spent on chrome, on the device with
+     the least to spare. Moving the vertical space out of the bar's own padding
+     and into the buttons costs nothing and pays twice: the bar comes down to
+     ~52px, and the buttons go from 36px tall to 44, which is the minimum
+     comfortable touch target and what they should always have been.
+     nowrap because "THE BOOK" was breaking onto a second line, which made the
+     whole bar two rows tall. */
+  #topnav{padding:3px 12px;}
   #topnav .brand{display:none;}          /* the nav itself is the identity here */
   #topnav nav{gap:0;}
-  #topnav nav button{font-size:11px;padding:12px 9px;letter-spacing:.10em;}
-  #topnav nav button::after{left:9px;right:9px;}
-  #topnav .navtools button{font-size:11px;padding:11px 12px;}
+  #topnav nav button{font-size:10.5px;padding:16px 7px;letter-spacing:.08em;white-space:nowrap;}
+  #topnav nav button::after{left:7px;right:7px;bottom:9px;}
+  /* "SOUND ON" was wrapping to two lines, which made this the tallest thing in
+     the bar and set the height of the whole header on its own. */
+  #topnav .navtools button{font-size:11px;padding:15px 12px;white-space:nowrap;}
 
   /* one action, full width, never wrapping, clear of the browser chrome */
   #breakBtn{
@@ -226,7 +236,7 @@ body.has-cursor,body.has-cursor *{cursor:none !important;}
 }
 
 </style>
-<link rel="stylesheet" href="panels.css?v=7">
+<link rel="stylesheet" href="panels.css?v=8">
 </head>
 <body>
 

@@ -53,6 +53,54 @@ function holeMaterial() {
   });
 }
 
+// ── fit each portrait panel's box to its own content ──────────────
+// Authoring a fixed element height for a phone is a guess, and it was the
+// wrong one: the Experience sheet's content ran 637px past its 1180px box and
+// the trading board's 707px past 1160. Everything downstream is derived from
+// el[1] — the hole punch, the paper prop, the camera distance — so the excess
+// rendered OUTSIDE the punched hole, where the opaque canvas paints over it.
+// That is the text cut off at the bottom of every long panel on a phone.
+//
+// Measured, never guessed: lay the element out at its authored width with
+// height:auto and read scrollHeight, which is the content plus both paddings —
+// exactly the height that makes it fit. Each panel's absolutely-positioned
+// footer already has its strip reserved as padding-bottom, so it is included.
+//
+// Grow only. The contact card and the message pad are composed with deliberate
+// space under the text — a signature and a stamp are pinned to the bottom edge
+// — and shrinking those boxes to their copy would collapse that layout.
+//
+// Runs before computeStops() and before buildPanels(), because both read c.h.
+export function preparePanels() {
+  const CARR = carriersFor(innerWidth / innerHeight);
+  const portrait = CARR !== CARRIER;
+  document.body.classList.toggle('portrait', portrait);
+  if (!portrait) return CARR;
+
+  for (const key of Object.keys(CARR)) {
+    const c = CARR[key];
+    const el = document.getElementById(key);
+    if (!el) continue;
+    // Every inline style set here is put back. The projected branch of
+    // buildPanels re-applies width and height from the carrier, but the FLAT
+    // fallback does not — it lets CSS size the card — so leaving an 820px
+    // width behind would pin a phone card to 820px on a 392px screen.
+    const wWas = el.style.width, hWas = el.style.height, ovWas = el.style.overflow;
+    el.style.width = c.el[0] + 'px';
+    el.style.height = 'auto';
+    el.style.overflow = 'visible';
+    const need = Math.ceil(el.scrollHeight);
+    el.style.width = wWas; el.style.height = hWas; el.style.overflow = ovWas;
+    // 4:1 ceiling: a runaway measurement (a font that never loads, an image
+    // with no intrinsic size) would otherwise push the camera far enough back
+    // to frame a panel nobody can read, which is worse than clipping.
+    const h = Math.max(c.el[1], Math.min(need, c.el[0] * 4));
+    c.el[1] = h;
+    c.h = c.w * h / c.el[0];
+  }
+  return CARR;
+}
+
 export function buildPanels(scene, cssScene, M, stops, market) {
   // Portrait screens get portrait panels. Resolved once — the paper props below
   // are built from these dimensions, so it must not change under them.
@@ -179,8 +227,19 @@ export function buildPanels(scene, cssScene, M, stops, market) {
   // Same hole-punch treatment as the board, for the same reason: these have
   // to stay legible, and anything drawn into the WebGL canvas is resampled
   // by the DPR cap before it reaches a retina display.
+  //
+  // Landscape only. The portrait board is 2.6m tall against the landscape
+  // board's 1.47 — tall enough that its rectangle CONTAINS the console
+  // screens at y=0.96 and the ticker at y=2.60. Hole punches deliberately do
+  // not depth-test (see holeMaterial), so a screen behind the board still cuts
+  // its rectangle out of the board's own HTML and paints itself over the
+  // project list. That is the two chart cards sitting across the middle of the
+  // Projects panel, and the ticker prices bleeding through its top edge.
+  //
+  // Dropping them also removes nine CSS3D elements and nine holes from the
+  // phone's frame budget, on the one device that cannot spare them.
   const screens = {};
-  {
+  if (!portrait) {
     const els = buildScreenElements(market);
     for (const key of Object.keys(SCREEN)) {
       const c = SCREEN[key];
