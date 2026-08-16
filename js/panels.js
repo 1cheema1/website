@@ -80,29 +80,17 @@ export function buildPanels(scene, cssScene, M, stops, market) {
   // never going to beat a readable card, and the room still renders behind it
   // with the paper prop on the desk where the panel would have been.
   // ── who gets flat cards ───────────────────────────────────────
-  // Portrait gets the projected panels, same as desktop. The CSS3D projection
-  // was measured in real WebKit across four iPhone profiles (15 Pro, 14 Pro
-  // Max, 13, SE) and the panel lands exactly on its hole-punch every time —
-  // delta 0 on both axes. It is correct in Safari.
+  // Every phone. The projection measures exactly correct in real WebKit on
+  // iPhone 15 Pro, 14 Pro Max, 13 and SE profiles — delta 0 on both axes — and
+  // it is still displaced on the actual device this is being tested on. I tried
+  // detecting the browser instead and the detection did not match either.
   //
-  // Where it is NOT correct is inside an app's embedded browser. The reports of
-  // a panel sitting beside its own hole, offset by about +147px, +79px, all
-  // came from a WKWebView hosted in another app — the giveaway being a viewport
-  // taller than Safari's own (393x695 against 393x659) and that app's chrome
-  // rather than Safari's. Those webviews get the flat cards, which render
-  // correctly there, because a readable card beats a broken projection.
-  //
-  // ?proj=1 and ?flat=1 force either mode anywhere.
+  // So this stops being conditional. Portrait gets the cards, which render
+  // correctly there, because a site that works is worth more than a diagnosis
+  // I keep failing to reach. ?proj=1 forces the projected panels for anyone who
+  // wants to pick the projection back up with a debugger attached.
   const q = new URLSearchParams(location.search);
-  const ua = navigator.userAgent;
-  const IN_APP =
-    /FBAN|FBAV|FB_IAB|Instagram|Line\/|Twitter|MicroMessenger|Snapchat|LinkedInApp|Pinterest|GSA\//i.test(ua) ||
-    // iOS WebKit that is not Safari and not Chrome/Firefox for iOS
-    (/iPhone|iPad|iPod/.test(ua) && /AppleWebKit/.test(ua) &&
-     !/Safari\//.test(ua) && !/CriOS|FxiOS|EdgiOS/.test(ua));
-
-  const FLAT = q.get('flat') === '1' ||
-               (portrait && IN_APP && q.get('proj') !== '1');
+  const FLAT = q.get('flat') === '1' || (portrait && q.get('proj') !== '1');
   const items = {};
   const holeScene = new THREE.Scene();
 
